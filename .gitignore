@@ -7,6 +7,10 @@ concept.txt
 /logs/
 /static/icons/
 
+#config
+config.json
+state.json
+
 # C extensions
 *.so
 

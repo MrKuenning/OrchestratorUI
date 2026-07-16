@@ -54,7 +54,7 @@
     "port": 8080,
     "group": "Lora Model Manager 2",
     "app_type": "Server",
-    "local_url": null,
+    "local_url": "http://10.1.1.5:8080",
     "remote_url": null,
     "start_with_group": true,
     "launch_external": false,
