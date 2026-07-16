@@ -99,7 +99,7 @@
                 <div class="flex items-center gap-2 shrink-0">
                     <i data-lucide="layers" class="w-6 h-6 text-brand-500"></i>
                     <span class="font-bold text-xl tracking-tight text-white hidden sm:block">OrchestratorUI</span>
-                    <span class="text-[10px] font-mono text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded ml-1 hidden sm:block">v1.0.5</span>
+                    <span class="text-[10px] font-mono text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded ml-1 hidden sm:block">v1.0.6</span>
                 </div>
                 
                 <!-- 2. Controls (Drops down on narrower screens) -->
@@ -125,16 +125,7 @@
                                     <i data-lucide="monitor-play" class="w-4 h-4"></i> Consoles
                                 </button>
                             </div>
-                            
-                            <div id="group-controls" class="flex flex-col sm:flex-row sm:items-center gap-2 sm:mr-2">
-                                <label class="text-xs text-gray-400 font-medium sm:hidden">Group by:</label>
-                                <label class="text-xs text-gray-400 font-medium hidden sm:block">Group by:</label>
-                                <select id="group-select" onchange="changeGroupMode(this.value)" class="bg-black/50 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500 w-full sm:w-auto">
-                                    <option value="groups">App Group</option>
-                                    <option value="status">Status</option>
-                                    <option value="type">App Type</option>
-                                </select>
-                            </div>
+
 
                             <button onclick="openAppModal()" class="flex items-center justify-center sm:justify-start gap-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors shadow-lg shadow-brand-500/20 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
                                 <i data-lucide="plus" class="w-4 h-4"></i> Add App
@@ -197,14 +188,45 @@
             
             <!-- GRID VIEW -->
             <div id="view-grid" class="w-full pb-8">
-                <div id="grid-content" class="flex flex-col gap-8">
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="layout-grid" class="w-5 h-5 text-brand-500"></i> Grid View</h3>
+                        <p class="text-sm text-gray-400 hidden sm:block">Detailed card view of applications.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-gray-400 font-medium hidden sm:block">Group by:</label>
+                        <select onchange="changeGroupMode(this.value)" class="group-select-sync bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-brand-500 cursor-pointer">
+                            <option value="groups">App Group</option>
+                            <option value="status">Status</option>
+                            <option value="type">App Type</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="grid-content" class="flex flex-wrap items-start gap-8">
                     <!-- Groups injected here -->
                 </div>
             </div>
             
             <!-- LIST VIEW -->
-            <div id="view-list" class="hidden w-full glass-panel rounded-xl overflow-hidden shadow-lg border border-gray-800">
-                <div class="overflow-x-auto">
+            <div id="view-list" class="hidden w-full pb-8">
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="list" class="w-5 h-5 text-brand-500"></i> List View</h3>
+                        <p class="text-sm text-gray-400 hidden sm:block">Tabular view of applications.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-gray-400 font-medium hidden sm:block">Group by:</label>
+                        <select onchange="changeGroupMode(this.value)" class="group-select-sync bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-brand-500 cursor-pointer">
+                            <option value="groups">App Group</option>
+                            <option value="status">Status</option>
+                            <option value="type">App Type</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl overflow-hidden shadow-lg border border-gray-800">
+                    <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-900/50 border-b border-gray-800 text-sm font-medium text-gray-400">
@@ -232,6 +254,7 @@
                     </table>
                 </div>
             </div>
+        </div>
             
             <!-- COMPACT VIEW -->
             <div id="view-compact" class="hidden w-full pb-8">
@@ -469,6 +492,7 @@
 
         function changeGroupMode(mode) {
             groupMode = mode;
+            document.querySelectorAll('.group-select-sync').forEach(s => s.value = mode);
             if (currentView === 'grid') renderGrid();
             if (currentView === 'list') renderList();
         }
@@ -605,8 +629,8 @@
                 
                 // Group Header
                 html += `
-                <div class="flex flex-col gap-4">
-                    <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                <div class="flex flex-col gap-4 max-w-full">
+                    <div class="flex items-center justify-between border-b border-gray-800 pb-2 gap-4">
                         <div class="flex items-center gap-3">
                             <h3 class="text-xl font-bold text-white">${gName}</h3>
                             <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">${runningCount} / ${totalCount} Running</span>
@@ -623,12 +647,12 @@
                 groupApps.forEach(app => {
                     const isRunning = app.running;
                     const statusDot = isRunning 
-                        ? `<div class="w-3 h-3 rounded-full bg-brand-500 pulse-green"></div>`
-                        : `<div class="w-3 h-3 rounded-full bg-gray-600"></div>`;
+                        ? `<div class="w-2.5 h-2.5 rounded-full bg-brand-500 pulse-green shrink-0"></div>`
+                        : `<div class="w-2.5 h-2.5 rounded-full bg-gray-600 shrink-0"></div>`;
                         
                     const statusText = isRunning 
-                        ? `<span class="text-sm font-medium text-brand-500">Running (PID: ${app.pid})</span>`
-                        : `<span class="text-sm font-medium text-gray-500">Stopped</span>`;
+                        ? `<span class="text-[12px] font-semibold text-brand-500 uppercase tracking-wide shrink-0">Running <span class="text-gray-500 font-normal normal-case">(${app.pid})</span></span>`
+                        : `<span class="text-[12px] font-semibold text-gray-500 uppercase tracking-wide shrink-0">Stopped</span>`;
 
                     const buttons = isRunning
                         ? `<button id="btn-stop-${app.id}" onclick="stopApp('${app.id}')" class="flex-1 flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg py-1.5 px-3 text-sm font-medium transition-colors"><i data-lucide="square" class="w-4 h-4 fill-current"></i> Stop</button>`
@@ -654,17 +678,19 @@
                         ${app.remote_url ? `<a href="${app.remote_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-800 rounded transition-colors" title="Open Remote URL"><i data-lucide="globe" class="w-4 h-4"></i></a>` : ''}
                     ` : '';
 
-                    const metricsHtml = (isRunning && app.metrics) ? `
-                        <div class="flex items-center gap-3 mt-3 text-[11px] font-mono text-gray-400 bg-black/40 py-1.5 px-2.5 rounded border border-gray-800/50">
-                            <span title="CPU Usage" class="flex items-center gap-1.5"><i data-lucide="cpu" class="w-3.5 h-3.5 text-gray-500"></i> ${app.metrics.cpu}%</span>
-                            <span title="RAM Usage" class="flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-gray-500"></i> ${Math.round(app.metrics.ram_mb)} MB</span>
-                            ${(app.metrics.gpu_util !== undefined) ? `<span title="GPU Usage" class="flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5 text-gray-500"></i> ${app.metrics.gpu_util}%</span>` : ''}
+                    const metricsHtml = isRunning ? `
+                        <div class="mt-2 flex items-center gap-3 text-[11px] font-mono text-gray-400 h-4">
+                            ${app.metrics ? `
+                                <span title="CPU Usage" class="flex items-center gap-1 shrink-0"><i data-lucide="cpu" class="w-3.5 h-3.5 text-gray-500"></i> ${app.metrics.cpu}%</span>
+                                <span title="RAM Usage" class="flex items-center gap-1 shrink-0"><i data-lucide="database" class="w-3.5 h-3.5 text-gray-500"></i> ${Math.round(app.metrics.ram_mb)} MB</span>
+                                ${(app.metrics.gpu_util !== undefined) ? `<span title="GPU Usage" class="flex items-center gap-1 shrink-0"><i data-lucide="monitor" class="w-3.5 h-3.5 text-gray-500"></i> ${app.metrics.gpu_util}%</span>` : ''}
+                            ` : ''}
                         </div>
-                    ` : '';
+                    ` : `<div class="mt-2 h-4 w-full block"></div>`;
 
                     html += `
                         <div class="w-full sm:w-[380px] shrink-0 glass-panel rounded-xl overflow-hidden flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-                            <div class="p-4 flex-1 relative">
+                            <div class="p-4 flex-1 flex flex-col relative">
                                 ${isRunning ? `<div class="absolute -top-10 -right-10 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>` : ''}
                                 
                                 <div class="flex justify-between items-start mb-3 relative z-10">
@@ -676,11 +702,13 @@
                                                 ${app.description ? `<p class="text-xs text-gray-400 truncate" title="${app.description}">${app.description}</p>` : ''}
                                             </div>
                                         </div>
-                                        <div class="mt-3 flex items-center gap-2 truncate">
-                                            ${statusDot}
-                                            ${statusText}
+                                        <div class="mt-3 flex flex-col">
+                                            <div class="flex items-center gap-2 shrink-0 truncate">
+                                                ${statusDot}
+                                                ${statusText}
+                                            </div>
+                                            ${metricsHtml}
                                         </div>
-                                        ${metricsHtml}
                                     </div>
                                     <div class="flex flex-col items-end gap-2 shrink-0">
                                         ${typeBadge}
@@ -696,7 +724,7 @@
                                     </div>
                                 </div>
                                 
-                                <div class="bg-black/30 rounded-lg py-1.5 px-2.5 border border-gray-800/50 relative z-10 flex items-center gap-2">
+                                <div class="mt-auto bg-black/30 rounded-lg py-1.5 px-2.5 border border-gray-800/50 relative z-10 flex items-center gap-2">
                                     <span class="text-[11px] text-gray-500 font-mono font-medium shrink-0">CMD:</span>
                                     <div class="text-[11px] text-gray-400 font-mono truncate" title="${app.cmd}">${app.cmd}</div>
                                 </div>

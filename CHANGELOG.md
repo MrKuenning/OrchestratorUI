@@ -5,8 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.5]
+## [1.0.6]
 
+### Added
+- Enhanced Grid View layout logic to use dynamic flex-wrap instead of rigid rows. This significantly improves screen utilization by allowing multiple narrow groups to seamlessly float next to each other on a single line.
+- Repositioned the "Group By" dropdown out of the global top navigation bar to create localized toolbars at the top of the Grid and List views. These dropdowns remain perfectly synchronized across views.
+- Refined Grid card heights so that started apps and stopped apps share identical vertical heights natively, ensuring the layout remains cleanly aligned.
+- Refactored Grid card styling to apply `mt-auto` to the CMD box. This anchors the CMD field to the absolute bottom of the card content area so it never shifts or bounces vertically when app metadata sizes differ.
+- Restored the application metrics to their own dedicated line directly beneath the app status. This ensures that valuable metrics (especially GPU utilization) are never truncated on narrower windows.
+
+### Fixed
+- Resolved a DOM structure bug introduced in a recent update that mistakenly nested the Compact and Consoles views inside the List view container, rendering those tabs invisible.
+
+## [1.0.5]
 ### Added
 - Comprehensive `README.md` with project overview, features, setup instructions, and configuration details.
 - Favicon support (`favicon.ico`) for the web application.
