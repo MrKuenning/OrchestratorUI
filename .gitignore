@@ -2,6 +2,9 @@
 __pycache__/
 *.py[codz]
 *$py.class
+concept.txt
+/TestFiles/
+/logs/
 
 # C extensions
 *.so

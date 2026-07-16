@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrchestratorUI</title>
+    <!-- Tailwind CSS (Local) -->
+    <script src="/static/vendor/tailwindcss.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Lucide Icons (Local) -->
+    <script src="/static/vendor/lucide.js"></script>
+    <!-- ANSI Parser for console colors (Local) -->
+    <script src="/static/vendor/ansi_up.min.js"></script>
+    
+    <style>
+        body {
+            background-color: #0f1115;
+            color: #e2e8f0;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,10%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,20%,10%,1) 0, transparent 50%);
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .drawer {
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .drawer.open {
+            transform: translateX(0);
+        }
+        
+        .terminal-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+        .terminal-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+        .terminal-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+        
+        .pulse-green {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: pulse-green-anim 2s infinite;
+        }
+        @keyframes pulse-green-anim {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        /* Nav Tab active states */
+        .tab-btn.active {
+            border-bottom-color: #22c55e;
+            color: #22c55e;
+        }
+    </style>
+</head>
+<body class="antialiased overflow-hidden flex flex-col h-screen">
+
+    <!-- Navbar / System Resources -->
+    <nav class="glass-panel shrink-0 z-40 border-b border-gray-800">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="layers" class="w-6 h-6 text-brand-500"></i>
+                    <span class="font-bold text-xl tracking-tight text-white">OrchestratorUI</span>
+                </div>
+                
+                <!-- Metrics -->
+                <div class="flex items-center gap-6 text-sm">
+                    <!-- CPU -->
+                    <div class="flex flex-col gap-1 w-24">
+                        <div class="flex justify-between text-gray-400">
+                            <span>CPU</span>
+                            <span id="metric-cpu-val">0%</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div id="metric-cpu-bar" class="h-full bg-blue-500 transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <!-- RAM -->
+                    <div class="flex flex-col gap-1 w-24">
+                        <div class="flex justify-between text-gray-400">
+                            <span>RAM</span>
+                            <span id="metric-ram-val">0%</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div id="metric-ram-bar" class="h-full bg-brand-500 transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <!-- GPU -->
+                    <div id="metric-gpu-container" class="flex flex-col gap-1 w-32 hidden">
+                        <div class="flex justify-between text-gray-400 text-xs">
+                            <span>GPU <span id="metric-gpu-val" class="font-medium">0%</span></span>
+                            <span id="metric-vram-val">0/0 GB</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div id="metric-gpu-bar" class="h-full bg-purple-500 transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col min-h-0 min-w-0">
+        
+        <!-- Header & Toolbar -->
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end shrink-0">
+            <div>
+                <h2 class="text-2xl font-semibold text-white">Applications</h2>
+                <p class="text-gray-400 text-sm mt-1">Manage and monitor your local background services</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- View Switcher Tabs -->
+                <div class="flex border-b border-gray-800 overflow-x-auto">
+                    <button onclick="switchView('grid')" id="tab-grid" class="tab-btn active px-4 py-2 border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="layout-grid" class="w-4 h-4"></i> Grid
+                    </button>
+                    <button onclick="switchView('list')" id="tab-list" class="tab-btn px-4 py-2 border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="list" class="w-4 h-4"></i> List
+                    </button>
+                    <button onclick="switchView('compact')" id="tab-compact" class="tab-btn px-4 py-2 border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="layout-panel-top" class="w-4 h-4"></i> Compact
+                    </button>
+                    <button onclick="switchView('consoles')" id="tab-consoles" class="tab-btn px-4 py-2 border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="monitor-play" class="w-4 h-4"></i> Consoles
+                    </button>
+                </div>
+                
+                <div id="group-controls" class="flex items-center gap-2 mr-2">
+                    <label class="text-xs text-gray-400 font-medium hidden sm:block">Group by:</label>
+                    <select id="group-select" onchange="changeGroupMode(this.value)" class="bg-black/50 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500">
+                        <option value="groups">App Group</option>
+                        <option value="status">Status</option>
+                        <option value="type">App Type</option>
+                    </select>
+                </div>
+
+                <button onclick="openAppModal()" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors shadow-lg shadow-brand-500/20 shrink-0">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Add App
+                </button>
+            </div>
+        </div>
+        
+        <!-- View Container -->
+        <div id="view-container" class="flex-1 flex flex-col relative w-full min-h-0 min-w-0">
+            
+            <!-- GRID VIEW -->
+            <div id="view-grid" class="w-full pb-8">
+                <div id="grid-content" class="flex flex-col gap-8">
+                    <!-- Groups injected here -->
+                </div>
+            </div>
+            
+            <!-- LIST VIEW -->
+            <div id="view-list" class="hidden w-full glass-panel rounded-xl overflow-hidden shadow-lg border border-gray-800">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-900/50 border-b border-gray-800 text-sm font-medium text-gray-400">
+                                <th class="p-4 cursor-pointer hover:text-white transition-colors group" onclick="toggleSort('name')">
+                                    Name <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1 opacity-50 group-hover:opacity-100"></i>
+                                </th>
+                                <th class="p-4 cursor-pointer hover:text-white transition-colors group" onclick="toggleSort('group')">
+                                    Group <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1 opacity-50 group-hover:opacity-100"></i>
+                                </th>
+                                <th class="p-4 cursor-pointer hover:text-white transition-colors group" onclick="toggleSort('running')">
+                                    Status <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1 opacity-50 group-hover:opacity-100"></i>
+                                </th>
+                                <th class="p-4 cursor-pointer hover:text-white transition-colors group" onclick="toggleSort('type')">
+                                    Type <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1 opacity-50 group-hover:opacity-100"></i>
+                                </th>
+                                <th class="p-4">Port</th>
+                                <th class="p-4">PID</th>
+                                <th class="p-4">Metrics</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="list-content" class="text-sm divide-y divide-gray-800/50 bg-black/10">
+                            <!-- List rows injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- COMPACT VIEW -->
+            <div id="view-compact" class="hidden w-full pb-8">
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="activity" class="w-5 h-5 text-brand-500"></i> Active Processes</h3>
+                    <p class="text-sm text-gray-400">Minimal dashboard showing only what is currently running.</p>
+                </div>
+                <div id="compact-content" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <!-- Compact cards injected here -->
+                </div>
+            </div>
+            
+            <!-- MULTI-CONSOLE VIEW -->
+            <div id="view-consoles" class="hidden flex-1 flex gap-4 h-full min-h-0 min-w-0">
+                <!-- Sidebar Pins -->
+                <div class="w-64 glass-panel rounded-xl border border-gray-800 p-4 flex flex-col h-full overflow-hidden shrink-0">
+                    <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="pin" class="w-4 h-4"></i> Pin Consoles
+                    </h3>
+                    <div id="console-pins" class="flex-1 overflow-y-auto terminal-scroll flex flex-col gap-2">
+                        <!-- Pin toggles injected here -->
+                    </div>
+                </div>
+                
+                <!-- Tiled Consoles -->
+                <div id="console-tiles" class="flex gap-4 h-full overflow-x-auto min-w-0 min-h-0 pb-2 terminal-scroll flex-1">
+                    <!-- Tiled terminals injected here -->
+                    <div id="console-empty-state" class="flex-1 flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-800 rounded-xl bg-black/20 min-w-full">
+                        <i data-lucide="monitor-x" class="w-12 h-12 mb-3 text-gray-600"></i>
+                        <p>No consoles pinned. Select apps from the sidebar.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- App Editor Modal Overlay -->
+    <div id="app-modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity opacity-0 duration-300 flex items-center justify-center p-4" onclick="closeAppModal(event)">
+        <!-- Modal Content -->
+        <div class="glass-panel w-full max-w-3xl rounded-xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 opacity-0" id="app-modal-content" onclick="event.stopPropagation()">
+            <div class="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+                <h3 id="app-modal-title" class="text-lg font-semibold text-white">Add Application</h3>
+                <button onclick="closeAppModal()" class="text-gray-400 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="app-form" onsubmit="saveApp(event)" class="p-6 flex flex-col gap-6">
+                <input type="hidden" id="app-edit-mode" value="false">
+                
+                <!-- Identity Section -->
+                <div class="space-y-4">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Identity & Categorization</h4>
+                    
+                    <div class="flex gap-4">
+                        <div class="flex-[2]">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Application Name</label>
+                            <input type="text" id="app-name" required placeholder="e.g. Llama Server" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">App Type</label>
+                            <select id="app-type" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors appearance-none">
+                                <option value="">None</option>
+                                <option value="Server">Server</option>
+                                <option value="Frontend">Frontend</option>
+                                <option value="Script">Script</option>
+                                <option value="Database">Database</option>
+                                <option value="Worker">Worker</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">App ID <span class="text-xs text-gray-600 font-normal ml-1">(Unique Key)</span></label>
+                            <input type="text" id="app-id" required pattern="[a-zA-Z0-9-]+" title="Only alphanumeric characters and hyphens" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Group (Optional)</label>
+                            <input type="text" id="app-group" placeholder="e.g. LMM 2" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-4">
+                        <div class="flex-[2]">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Description (Optional)</label>
+                            <input type="text" id="app-description" placeholder="Short description of this service" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Icon Path/URL (Optional)</label>
+                            <input type="text" id="app-icon" placeholder="/static/icon.png or http..." class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-gray-800">
+
+                <!-- Execution Section -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Execution Details</h4>
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="app-launch-external" class="form-checkbox rounded bg-gray-800 border-gray-700 text-brand-500 focus:ring-brand-500 focus:ring-offset-gray-900">
+                                <label class="text-xs font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" for="app-launch-external">External Console</label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="app-start-group" class="form-checkbox rounded bg-gray-800 border-gray-700 text-brand-500 focus:ring-brand-500 focus:ring-offset-gray-900" checked>
+                                <label class="text-xs font-medium text-gray-400 cursor-pointer hover:text-white transition-colors" for="app-start-group">Start with Group</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Command</label>
+                        <input type="text" id="app-cmd" required placeholder="e.g. start.bat or python main.py" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Working Directory</label>
+                        <input type="text" id="app-cwd" required placeholder="C:\path\to\app" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                    </div>
+                </div>
+
+                <hr class="border-gray-800">
+
+                <!-- Network Section -->
+                <div class="space-y-4">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Networking & Access</h4>
+                    <div class="flex gap-4">
+                        <div class="w-1/4">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Port (Optional)</label>
+                            <input type="number" id="app-port" placeholder="8080" class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Local URL (Optional)</label>
+                            <input type="text" id="app-local-url" placeholder="http://127.0.0.1:..." class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Remote URL (Optional)</label>
+                            <input type="text" id="app-remote-url" placeholder="https://..." class="w-full bg-black/50 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pt-2 flex justify-end gap-3 mt-2">
+                    <button type="button" onclick="closeAppModal()" class="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Cancel</button>
+                    <button type="submit" id="app-save-btn" class="px-5 py-2.5 rounded-lg text-sm font-medium bg-brand-600 hover:bg-brand-500 text-white transition-colors flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i> Save Application
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Single Console Drawer Overlay -->
+    <div id="drawer-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden transition-opacity opacity-0 duration-300" onclick="closeConsole()"></div>
+
+    <!-- Single Console Drawer -->
+    <div id="console-drawer" class="drawer fixed right-0 top-0 bottom-0 w-full md:w-[700px] bg-[#0d1117] border-l border-gray-800 z-50 flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between p-4 border-b border-gray-800 glass-panel shrink-0">
+            <div class="flex items-center gap-3">
+                <i data-lucide="terminal" class="w-5 h-5 text-gray-400"></i>
+                <div>
+                    <h3 id="console-title" class="font-semibold text-white">Terminal Logs</h3>
+                    <p id="console-subtitle" class="text-xs text-brand-500 font-mono">Connected</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-400 hover:text-white transition-colors">
+                    <input type="checkbox" id="auto-scroll-toggle" class="form-checkbox rounded bg-gray-800 border-gray-700 text-brand-500 focus:ring-brand-500 focus:ring-offset-gray-900" checked>
+                    Auto-scroll
+                </label>
+                <div class="w-px h-4 bg-gray-700"></div>
+                <button onclick="clearLogs()" class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors" title="Clear logs">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="closeConsole()" class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors" title="Close terminal">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="terminal-output" class="terminal-scroll flex-1 p-4 overflow-y-auto font-mono text-sm text-gray-300 whitespace-pre-wrap break-words"></div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        // Init Lucide icons & ANSI parser
+        lucide.createIcons();
+        const ansiParser = new AnsiUp();
+        
+        // Escape HTML to prevent injection, except we let AnsiUp handle its styling safely
+        ansiParser.use_classes = true; // Use classes for better styling if desired, but inline is fine too. By default it uses inline style.
+        ansiParser.use_classes = false;
+
+        // Global State
+        let apps = [];
+        let activeWs = null; // Single drawer WS
+        let isAutoScroll = true;
+        
+        // View State
+        let currentView = localStorage.getItem('orchestrator_view') || 'grid';
+        let sortCol = 'name';
+        let sortDesc = false;
+        let groupMode = 'groups';
+        
+        // Multi-Console State
+        let pinnedConsoles = new Set();
+        let multiWs = {}; // { appId: WebSocket }
+        
+        let inlineWs = {}; // { appId: WebSocket }
+
+        // DOM Elements
+        const terminalOutput = document.getElementById('terminal-output');
+        const autoScrollToggle = document.getElementById('auto-scroll-toggle');
+        const drawerOverlay = document.getElementById('drawer-overlay');
+        const consoleDrawer = document.getElementById('console-drawer');
+
+        function changeGroupMode(mode) {
+            groupMode = mode;
+            if (currentView === 'grid') renderGrid();
+            if (currentView === 'list') renderList();
+        }
+
+        // ----- View Switcher ----- //
+        function switchView(viewName) {
+            currentView = viewName;
+            localStorage.setItem('orchestrator_view', viewName);
+            
+            const groupControls = document.getElementById('group-controls');
+            if (groupControls) groupControls.style.display = (viewName === 'grid' || viewName === 'list') ? 'flex' : 'none';
+            
+            // Toggle page scrolling based on view
+            const mainContainer = document.querySelector('main');
+            const viewContainer = document.getElementById('view-container');
+            if (viewName === 'consoles') {
+                mainContainer.classList.remove('overflow-y-auto');
+                mainContainer.classList.add('overflow-hidden');
+                viewContainer.classList.add('min-h-0');
+            } else {
+                mainContainer.classList.add('overflow-y-auto');
+                mainContainer.classList.remove('overflow-hidden');
+                viewContainer.classList.remove('min-h-0');
+            }
+            
+            // Update tabs
+            ['grid', 'list', 'compact', 'consoles'].forEach(v => {
+                const btn = document.getElementById(`tab-${v}`);
+                if (v === viewName) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+                
+                const container = document.getElementById(`view-${v}`);
+                if (v === viewName) {
+                    container.classList.remove('hidden');
+                } else {
+                    container.classList.add('hidden');
+                }
+            });
+            
+            renderView();
+        }
+
+        // ----- Core Render Loop ----- //
+        function renderView() {
+            if (currentView === 'grid') renderGrid();
+            else if (currentView === 'list') renderList();
+            else if (currentView === 'compact') renderCompact();
+            else renderConsolesView();
+        }
+
+        // ----- Grid View ----- //
+        function renderGrid() {
+            const container = document.getElementById('grid-content');
+            
+            if (apps.length === 0) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center text-gray-500 py-16 bg-gray-900/20 rounded-xl border border-gray-800/50 border-dashed">
+                    <i data-lucide="server-off" class="w-12 h-12 mb-3 text-gray-600"></i>
+                    <p>No applications configured.</p>
+                </div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            const grouped = {};
+            apps.forEach(app => {
+                let g;
+                if (groupMode === 'status') {
+                    g = app.running ? 'Running' : 'Stopped';
+                } else if (groupMode === 'type') {
+                    g = app.app_type || 'Uncategorized';
+                } else {
+                    g = app.group || 'Ungrouped';
+                }
+                if (!grouped[g]) grouped[g] = [];
+                grouped[g].push(app);
+            });
+
+            let html = '';
+            
+            // Sort groups
+            const groups = Object.keys(grouped).sort((a, b) => {
+                if (groupMode === 'status') {
+                    if (a === 'Running') return -1;
+                    if (b === 'Running') return 1;
+                    return 0;
+                } else if (groupMode === 'type') {
+                    if (a === "Uncategorized") return 1;
+                    if (b === "Uncategorized") return -1;
+                    return a.localeCompare(b);
+                } else {
+                    if (a === "Ungrouped") return 1;
+                    if (b === "Ungrouped") return -1;
+                    return a.localeCompare(b);
+                }
+            });
+
+            groups.forEach(gName => {
+                const groupApps = grouped[gName];
+                const runningCount = groupApps.filter(a => a.running).length;
+                const totalCount = groupApps.length;
+                const allRunning = runningCount === totalCount;
+                
+                // Group Header
+                html += `
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-xl font-bold text-white">${gName}</h3>
+                            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">${runningCount} / ${totalCount} Running</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${groupMode === 'groups' && !allRunning ? `<button onclick="startGroup('${gName}')" class="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand-500/10 hover:bg-brand-500/20 text-brand-500 border border-brand-500/20 transition-colors"><i data-lucide="play" class="w-3 h-3 fill-current"></i> Start Group</button>` : ''}
+                            ${groupMode === 'groups' && runningCount > 0 ? `<button onclick="stopGroup('${gName}')" class="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-colors"><i data-lucide="square" class="w-3 h-3 fill-current"></i> Stop Group</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                `;
+
+                // Render Cards
+                groupApps.forEach(app => {
+                    const isRunning = app.running;
+                    const statusDot = isRunning 
+                        ? `<div class="w-3 h-3 rounded-full bg-brand-500 pulse-green"></div>`
+                        : `<div class="w-3 h-3 rounded-full bg-gray-600"></div>`;
+                        
+                    const statusText = isRunning 
+                        ? `<span class="text-sm font-medium text-brand-500">Running (PID: ${app.pid})</span>`
+                        : `<span class="text-sm font-medium text-gray-500">Stopped</span>`;
+
+                    const buttons = isRunning
+                        ? `<button id="btn-stop-${app.id}" onclick="stopApp('${app.id}')" class="flex-1 flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg py-2 px-4 text-sm font-medium transition-colors"><i data-lucide="square" class="w-4 h-4 fill-current"></i> Stop</button>`
+                        : `<button id="btn-start-${app.id}" onclick="startApp('${app.id}')" class="flex-1 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors shadow-[0_0_15px_rgba(34,197,94,0.3)]"><i data-lucide="play" class="w-4 h-4 fill-current"></i> Start</button>`;
+
+                    const portBadge = app.port 
+                        ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20"><i data-lucide="globe" class="w-3 h-3"></i> Port ${app.port}</span>`
+                        : '';
+                        
+                    let typeBadgeIcon = "box";
+                    if (app.app_type === "Server") typeBadgeIcon = "server";
+                    if (app.app_type === "Frontend") typeBadgeIcon = "layout";
+                    if (app.app_type === "Script") typeBadgeIcon = "file-code";
+                    if (app.app_type === "Database") typeBadgeIcon = "database";
+                    if (app.app_type === "Worker") typeBadgeIcon = "cpu";
+                        
+                    const typeBadge = app.app_type
+                        ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20"><i data-lucide="${typeBadgeIcon}" class="w-3 h-3"></i> ${app.app_type}</span>`
+                        : '';
+
+                    const urlButtons = isRunning ? `
+                        ${app.local_url ? `<a href="${app.local_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors" title="Open Local URL"><i data-lucide="external-link" class="w-4 h-4"></i></a>` : ''}
+                        ${app.remote_url ? `<a href="${app.remote_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-800 rounded transition-colors" title="Open Remote URL"><i data-lucide="globe" class="w-4 h-4"></i></a>` : ''}
+                    ` : '';
+
+                    const metricsHtml = (isRunning && app.metrics) ? `
+                        <div class="flex items-center gap-3 mt-3 text-[11px] font-mono text-gray-400 bg-black/40 py-1.5 px-2.5 rounded border border-gray-800/50">
+                            <span title="CPU Usage" class="flex items-center gap-1.5"><i data-lucide="cpu" class="w-3.5 h-3.5 text-gray-500"></i> ${app.metrics.cpu}%</span>
+                            <span title="RAM Usage" class="flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-gray-500"></i> ${Math.round(app.metrics.ram_mb)} MB</span>
+                            ${app.metrics.vram_mb ? `<span title="VRAM Usage" class="flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5 text-gray-500"></i> ${Math.round(app.metrics.vram_mb)} MB</span>` : ''}
+                        </div>
+                    ` : '';
+
+                    html += `
+                        <div class="glass-panel rounded-xl overflow-hidden flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+                            <div class="p-5 flex-1 relative">
+                                ${isRunning ? `<div class="absolute -top-10 -right-10 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>` : ''}
+                                
+                                <div class="flex justify-between items-start mb-4 relative z-10">
+                                    <div class="flex-1 overflow-hidden pr-2">
+                                        <div class="flex items-center gap-3">
+                                            ${app.icon_path ? `<img src="/api/apps/${app.id}/icon" class="w-8 h-8 rounded bg-gray-800 object-cover shrink-0" onerror="this.outerHTML='<div class=\\'w-8 h-8 rounded bg-gray-800 flex items-center justify-center shrink-0\\'><i data-lucide=\\'box\\' class=\\'w-4 h-4 text-gray-500\\'></i></div>'" />` : `<div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center shrink-0"><i data-lucide="box" class="w-4 h-4 text-gray-500"></i></div>`}
+                                            <div class="overflow-hidden">
+                                                <h3 class="text-lg font-semibold text-white group-hover:text-brand-400 transition-colors truncate" title="${app.name}">${app.name}</h3>
+                                                ${app.description ? `<p class="text-xs text-gray-400 truncate" title="${app.description}">${app.description}</p>` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 flex items-center gap-2 truncate">
+                                            ${statusDot}
+                                            ${statusText}
+                                        </div>
+                                        ${metricsHtml}
+                                    </div>
+                                    <div class="flex flex-col items-end gap-2 shrink-0">
+                                        ${typeBadge}
+                                        ${portBadge}
+                                        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                                            <button onclick="openEditModalById('${app.id}')" class="p-1.5 text-gray-400 hover:text-brand-400 hover:bg-gray-800 rounded transition-colors" title="Edit App">
+                                                <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                                            </button>
+                                            <button onclick="deleteApp('${app.id}')" class="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded transition-colors" title="Delete App">
+                                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-black/30 rounded-lg p-3 border border-gray-800/50 relative z-10">
+                                    <div class="flex justify-between items-center text-xs text-gray-500 font-mono mb-1.5">
+                                        <span>CMD</span>
+                                    </div>
+                                    <div class="text-sm text-gray-300 font-mono truncate" title="${app.cmd}">${app.cmd}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="p-4 border-t border-gray-800/50 bg-black/20 flex gap-3 relative z-10">
+                                ${buttons}
+                                <button onclick="openConsole('${app.id}', '${app.name}')" class="flex-1 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 rounded-lg py-2 px-4 text-sm font-medium transition-colors">
+                                    <i data-lucide="terminal-square" class="w-4 h-4"></i> Console
+                                </button>
+                                ${urlButtons ? `<div class="flex items-center ml-1 border-l border-gray-700 pl-3">${urlButtons}</div>` : ''}
+                                <button onclick="toggleInlineConsole('${app.id}')" class="p-2 text-gray-400 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700">
+                                    <i data-lucide="chevron-down" id="inline-chevron-${app.id}" class="w-4 h-4 transition-transform duration-300"></i>
+                                </button>
+                            </div>
+                            <div id="inline-console-${app.id}" class="hidden h-48 border-t border-gray-800 bg-[#0d1117] p-3 overflow-y-auto font-mono text-xs text-gray-300 terminal-scroll"></div>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`; // Close grid & group wrapper
+            });
+
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // ----- List View ----- //
+        function toggleSort(col) {
+            if (sortCol === col) sortDesc = !sortDesc;
+            else {
+                sortCol = col;
+                sortDesc = false;
+            }
+            renderList();
+        }
+
+        function renderList() {
+            const tbody = document.getElementById('list-content');
+            
+            let sortedApps = [...apps].sort((a, b) => {
+                let valA, valB;
+                if (sortCol === 'name') { valA = a.name; valB = b.name; }
+                else if (sortCol === 'group') { valA = a.group || 'Ungrouped'; valB = b.group || 'Ungrouped'; }
+                else if (sortCol === 'type') { valA = a.app_type || 'Uncategorized'; valB = b.app_type || 'Uncategorized'; }
+                else if (sortCol === 'running') { valA = a.running ? 1 : 0; valB = b.running ? 1 : 0; }
+                
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+                
+                if (valA < valB) return sortDesc ? 1 : -1;
+                if (valA > valB) return sortDesc ? -1 : 1;
+                return 0;
+            });
+
+            if (sortedApps.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">No applications configured.</td></tr>`;
+                return;
+            }
+
+            // Grouping logic for list view
+            const grouped = {};
+            sortedApps.forEach(app => {
+                let g;
+                if (groupMode === 'status') {
+                    g = app.running ? 'Running' : 'Stopped';
+                } else if (groupMode === 'type') {
+                    g = app.app_type || 'Uncategorized';
+                } else {
+                    g = app.group || 'Ungrouped';
+                }
+                if (!grouped[g]) grouped[g] = [];
+                grouped[g].push(app);
+            });
+
+            let html = '';
+            
+            Object.keys(grouped).sort().forEach(groupName => {
+                html += `
+                    <tr class="bg-gray-800/20">
+                        <td colspan="8" class="p-3 text-xs font-semibold text-gray-400 uppercase tracking-wider border-y border-gray-800">
+                            ${groupName}
+                        </td>
+                    </tr>
+                `;
+                
+                grouped[groupName].forEach(app => {
+                    const isRunning = app.running;
+                    const statusDot = isRunning ? `<div class="w-2.5 h-2.5 rounded-full bg-brand-500 pulse-green"></div>` : `<div class="w-2.5 h-2.5 rounded-full bg-gray-600"></div>`;
+                    
+                    let typeBadgeIcon = "box";
+                    if (app.app_type === "Server") typeBadgeIcon = "server";
+                    if (app.app_type === "Frontend") typeBadgeIcon = "layout";
+                    if (app.app_type === "Script") typeBadgeIcon = "file-code";
+                    if (app.app_type === "Database") typeBadgeIcon = "database";
+                    if (app.app_type === "Worker") typeBadgeIcon = "cpu";
+                        
+                    const typeBadge = app.app_type
+                        ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20"><i data-lucide="${typeBadgeIcon}" class="w-3 h-3"></i> ${app.app_type}</span>`
+                        : '';
+                    
+                    const urlButtons = isRunning ? `
+                        ${app.local_url ? `<a href="${app.local_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors" title="Open Local URL"><i data-lucide="external-link" class="w-4 h-4"></i></a>` : ''}
+                        ${app.remote_url ? `<a href="${app.remote_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded transition-colors" title="Open Remote URL"><i data-lucide="globe" class="w-4 h-4"></i></a>` : ''}
+                    ` : '';
+                    
+                    html += `
+                        <tr class="hover:bg-gray-800/30 transition-colors group">
+                            <td class="p-4 font-medium text-white">
+                                <div class="flex items-center gap-3">
+                                    ${app.icon_path ? `<img src="/api/apps/${app.id}/icon" class="w-6 h-6 rounded object-cover shrink-0" onerror="this.style.display='none'" />` : `<div class="w-6 h-6 rounded bg-gray-700 flex items-center justify-center shrink-0"><i data-lucide="box" class="w-3 h-3 text-gray-400"></i></div>`}
+                                    <span class="truncate" title="${app.name}">${app.name}</span>
+                                </div>
+                            </td>
+                            <td class="p-4 text-gray-400">
+                                ${app.group ? `<span class="px-2 py-1 rounded bg-gray-800 text-xs">${app.group}</span>` : '<span class="text-xs text-gray-600">Ungrouped</span>'}
+                            </td>
+                            <td class="p-4">
+                                <div class="flex items-center gap-2">
+                                    ${statusDot}
+                                    <span class="${isRunning ? 'text-brand-500' : 'text-gray-500'}">${isRunning ? 'Running' : 'Stopped'}</span>
+                                </div>
+                            </td>
+                            <td class="p-4">${typeBadge}</td>
+                        <td class="p-4 text-gray-400 font-mono text-xs">${app.port || '-'}</td>
+                        <td class="p-4 text-gray-400 font-mono text-xs">${app.pid || '-'}</td>
+                        <td class="p-4 text-gray-400 font-mono text-xs whitespace-nowrap">
+                            ${(isRunning && app.metrics) ? `<span title="CPU"><i data-lucide="cpu" class="w-3 h-3 inline"></i> ${app.metrics.cpu}%</span> <span title="RAM" class="ml-2"><i data-lucide="database" class="w-3 h-3 inline"></i> ${Math.round(app.metrics.ram_mb)}MB</span>` : '-'}
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                ${urlButtons}
+                                ${isRunning 
+                                    ? `<button onclick="stopApp('${app.id}')" class="p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-4 h-4 fill-current"></i></button>`
+                                    : `<button onclick="startApp('${app.id}')" class="p-1.5 bg-brand-500/10 text-brand-500 hover:bg-brand-500/20 rounded transition-colors" title="Start"><i data-lucide="play" class="w-4 h-4 fill-current"></i></button>`}
+                                <button onclick="openConsole('${app.id}', '${app.name}')" class="p-1.5 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded transition-colors" title="Logs"><i data-lucide="terminal-square" class="w-4 h-4"></i></button>
+                                <button onclick="openEditModalById('${app.id}')" class="p-1.5 text-gray-500 hover:text-brand-400 transition-colors" title="Edit App"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                                <button onclick="deleteApp('${app.id}')" class="p-1.5 text-gray-500 hover:text-red-400 transition-colors" title="Delete App"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </td>
+                        </tr>
+                    `;
+                });
+            });
+
+            tbody.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function renderCompact() {
+            const container = document.getElementById('compact-content');
+            
+            const runningApps = apps.filter(a => a.running);
+            
+            if (runningApps.length === 0) {
+                container.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center text-gray-500 py-16 bg-gray-900/20 rounded-xl border border-gray-800/50 border-dashed">
+                    <i data-lucide="power-off" class="w-12 h-12 mb-3 text-gray-600"></i>
+                    <p>No applications are currently running.</p>
+                </div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            let html = '';
+            runningApps.forEach(app => {
+                const portBadge = app.port ? `<span class="text-xs text-gray-400 font-mono">:${app.port}</span>` : '';
+                const urlButtons = `
+                    ${app.local_url ? `<a href="${app.local_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors" title="Open Local URL"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></a>` : ''}
+                    ${app.remote_url ? `<a href="${app.remote_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded transition-colors" title="Open Remote URL"><i data-lucide="globe" class="w-3.5 h-3.5"></i></a>` : ''}
+                `;
+                html += `
+                    <div class="glass-panel rounded-lg p-3 flex items-center justify-between border-l-2 border-l-brand-500 bg-gray-800/20">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            ${app.icon_path ? `<img src="/api/apps/${app.id}/icon" class="w-6 h-6 rounded object-cover shrink-0" onerror="this.style.display='none'" />` : `<div class="w-6 h-6 rounded bg-gray-700 flex items-center justify-center shrink-0"><i data-lucide="box" class="w-3 h-3 text-gray-400"></i></div>`}
+                            <div class="flex flex-col truncate">
+                                <span class="text-sm font-medium text-white truncate" title="${app.name}">${app.name}</span>
+                                <span class="text-xs text-gray-500">PID: ${app.pid} ${portBadge} ${(app.metrics) ? `<span class="ml-2 pl-2 border-l border-gray-700 text-[10px] font-mono"><i data-lucide="cpu" class="w-3 h-3 inline"></i> ${app.metrics.cpu}% &nbsp; <i data-lucide="database" class="w-3 h-3 inline"></i> ${Math.round(app.metrics.ram_mb)}MB</span>` : ''}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0 ml-2">
+                            ${urlButtons}
+                            <button onclick="openConsole('${app.id}', '${app.name}')" class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors" title="Logs"><i data-lucide="terminal-square" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="stopApp('${app.id}')" class="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // ----- Multi-Console View ----- //
+        function renderConsolesView() {
+            const sidebar = document.getElementById('console-pins');
+            let sidebarHtml = '';
+            
+            const sidebarApps = apps.filter(app => app.running || pinnedConsoles.has(app.id));
+            sidebarApps.forEach(app => {
+                const isPinned = pinnedConsoles.has(app.id);
+                sidebarHtml += `
+                    <label class="flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors ${isPinned ? 'bg-brand-500/10 border-brand-500/30' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'}">
+                        <div class="flex items-center gap-2 truncate">
+                            <input type="checkbox" class="form-checkbox rounded bg-gray-800 border-gray-700 text-brand-500 focus:ring-brand-500 focus:ring-offset-gray-900" ${isPinned ? 'checked' : ''} onchange="togglePin('${app.id}', this.checked, '${app.name}')">
+                            <div class="truncate">
+                                <div class="text-sm font-medium text-white truncate">${app.name}</div>
+                                <div class="text-xs ${app.running ? 'text-brand-500' : 'text-gray-600'}">${app.running ? 'Running' : 'Stopped'}</div>
+                            </div>
+                        </div>
+                    </label>
+                `;
+            });
+            sidebar.innerHTML = sidebarHtml;
+            
+            // Re-calc grid layout
+            const gridContainer = document.getElementById('console-tiles');
+            const emptyState = document.getElementById('console-empty-state');
+            
+            const count = pinnedConsoles.size;
+            if (count === 0) {
+                emptyState.style.display = 'flex';
+                // Remove all tiles
+                Array.from(gridContainer.children).forEach(c => {
+                    if (c.id !== 'console-empty-state') c.remove();
+                });
+            } else {
+                emptyState.style.display = 'none';
+            }
+        }
+
+        function togglePin(appId, isPinned, appName) {
+            const gridContainer = document.getElementById('console-tiles');
+            
+            if (isPinned) {
+                pinnedConsoles.add(appId);
+                // Create Tile
+                const tile = document.createElement('div');
+                tile.id = `tile-${appId}`;
+                tile.className = "glass-panel border border-gray-800 rounded-xl overflow-hidden flex flex-col shadow-lg shrink-0 flex-grow min-h-0";
+                tile.style.flexBasis = "0";
+                tile.style.minWidth = "min(100%, 600px)";
+                tile.innerHTML = `
+                    <div class="px-4 py-2 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+                        <span class="font-medium text-white text-sm flex items-center gap-2"><i data-lucide="terminal-square" class="w-4 h-4 text-brand-500"></i> ${appName}</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="clearMultiLogs('${appId}')" class="text-gray-400 hover:text-white transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            <button onclick="togglePin('${appId}', false, '${appName}')" class="text-gray-400 hover:text-red-400 transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                    <div id="tile-output-${appId}" class="terminal-scroll flex-1 p-3 overflow-y-auto font-mono text-xs text-gray-300 whitespace-pre-wrap break-words bg-[#0d1117]"></div>
+                `;
+                gridContainer.appendChild(tile);
+                lucide.createIcons();
+                
+                // Connect WebSocket
+                connectMultiWs(appId);
+            } else {
+                pinnedConsoles.delete(appId);
+                const tile = document.getElementById(`tile-${appId}`);
+                if (tile) tile.remove();
+                if (multiWs[appId]) {
+                    multiWs[appId].close();
+                    delete multiWs[appId];
+                }
+            }
+            renderConsolesView(); // Update sidebar state and grid columns
+        }
+
+        function connectMultiWs(appId) {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/logs/${appId}`;
+            
+            const ws = new WebSocket(wsUrl);
+            multiWs[appId] = ws;
+            
+            const output = document.getElementById(`tile-output-${appId}`);
+            
+            ws.onmessage = (event) => {
+                if (!output) return;
+                if (output.childNodes.length > 500) {
+                    for(let i=0; i<100; i++) output.removeChild(output.firstChild);
+                }
+                const span = document.createElement('span');
+                // Use AnsiUp to parse colors!
+                span.innerHTML = ansiParser.ansi_to_html(event.data);
+                output.appendChild(span);
+                
+                // auto scroll multi always for now
+                output.scrollTop = output.scrollHeight;
+            };
+            ws.onclose = () => {
+                if (output) {
+                    const span = document.createElement('span');
+                    span.className = "text-yellow-500 block mt-2";
+                    span.innerHTML = `[Disconnected]`;
+                    output.appendChild(span);
+                }
+            }
+        }
+        
+        function clearMultiLogs(appId) {
+            const out = document.getElementById(`tile-output-${appId}`);
+            if (out) out.innerHTML = '';
+        }
+
+        // ----- Single Console Drawer Logic ----- //
+        autoScrollToggle.addEventListener('change', (e) => {
+            isAutoScroll = e.target.checked;
+            if (isAutoScroll) scrollToBottom();
+        });
+        
+        terminalOutput.addEventListener('scroll', () => {
+            if (!isAutoScroll) return;
+            const isAtBottom = terminalOutput.scrollHeight - terminalOutput.scrollTop <= terminalOutput.clientHeight + 50;
+            if (!isAtBottom) {
+                isAutoScroll = false;
+                autoScrollToggle.checked = false;
+            }
+        });
+
+        function scrollToBottom() {
+            if (isAutoScroll) terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        function clearLogs() {
+            terminalOutput.innerHTML = '';
+        }
+
+        function openConsole(appId, appName) {
+            document.getElementById('console-title').textContent = appName;
+            document.getElementById('console-subtitle').textContent = `Connecting to ${appId}...`;
+            
+            drawerOverlay.classList.remove('hidden');
+            void drawerOverlay.offsetWidth;
+            drawerOverlay.classList.remove('opacity-0');
+            drawerOverlay.classList.add('opacity-100');
+            consoleDrawer.classList.add('open');
+            
+            clearLogs();
+            
+            if (activeWs) activeWs.close();
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/logs/${appId}`;
+            
+            activeWs = new WebSocket(wsUrl);
+            
+            activeWs.onopen = () => {
+                document.getElementById('console-subtitle').textContent = `Connected`;
+                document.getElementById('console-subtitle').className = "text-xs text-brand-500 font-mono";
+            };
+            
+            activeWs.onmessage = (event) => {
+                if (terminalOutput.childNodes.length > 2000) {
+                    for(let i=0; i<500; i++) terminalOutput.removeChild(terminalOutput.firstChild);
+                }
+                const span = document.createElement('span');
+                // Use AnsiUp to parse colors!
+                span.innerHTML = ansiParser.ansi_to_html(event.data);
+                terminalOutput.appendChild(span);
+                scrollToBottom();
+            };
+            
+            activeWs.onerror = (err) => {
+                const span = document.createElement('span');
+                span.className = 'text-red-500';
+                span.textContent = '\\n[WebSocket Error]\\n';
+                terminalOutput.appendChild(span);
+            };
+            
+            activeWs.onclose = () => {
+                document.getElementById('console-subtitle').textContent = `Disconnected`;
+                document.getElementById('console-subtitle').className = "text-xs text-red-500 font-mono";
+                const span = document.createElement('span');
+                span.className = 'text-yellow-500 block mt-2';
+                span.textContent = '[Connection Closed]';
+                terminalOutput.appendChild(span);
+            };
+        }
+
+        function closeConsole() {
+            if (activeWs) { activeWs.close(); activeWs = null; }
+            drawerOverlay.classList.remove('opacity-100');
+            drawerOverlay.classList.add('opacity-0');
+            consoleDrawer.classList.remove('open');
+            setTimeout(() => { drawerOverlay.classList.add('hidden'); }, 300);
+        }
+
+        // ----- Inline Console Logic ----- //
+        function toggleInlineConsole(appId) {
+            const container = document.getElementById(`inline-console-${appId}`);
+            const chevron = document.getElementById(`inline-chevron-${appId}`);
+            
+            if (container.classList.contains('hidden')) {
+                // Open
+                container.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+                
+                // Connect WS if not already
+                if (!inlineWs[appId]) {
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}/ws/logs/${appId}`;
+                    const ws = new WebSocket(wsUrl);
+                    inlineWs[appId] = ws;
+                    
+                    ws.onmessage = (event) => {
+                        if (container.childNodes.length > 500) {
+                            for(let i=0; i<100; i++) container.removeChild(container.firstChild);
+                        }
+                        const span = document.createElement('span');
+                        span.innerHTML = ansiParser.ansi_to_html(event.data);
+                        container.appendChild(span);
+                        container.scrollTop = container.scrollHeight;
+                    };
+                    ws.onclose = () => {
+                        const span = document.createElement('span');
+                        span.className = "text-yellow-500 block mt-2";
+                        span.innerHTML = `[Disconnected]`;
+                        container.appendChild(span);
+                        delete inlineWs[appId];
+                    };
+                }
+            } else {
+                // Close
+                container.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+                if (inlineWs[appId]) {
+                    inlineWs[appId].close();
+                    delete inlineWs[appId];
+                }
+            }
+        }
+
+        // ----- API & Data Loading ----- //
+        function openAppModal() {
+            document.getElementById('app-form').reset();
+            document.getElementById('app-type').value = "";
+            document.getElementById('app-edit-mode').value = "false";
+            document.getElementById('app-id').readOnly = false;
+            document.getElementById('app-id').classList.remove('opacity-50');
+            document.getElementById('app-start-group').checked = true;
+            document.getElementById('app-launch-external').checked = false;
+            document.getElementById('app-modal-title').textContent = "Add Application";
+            
+            const overlay = document.getElementById('app-modal-overlay');
+            const content = document.getElementById('app-modal-content');
+            overlay.classList.remove('hidden');
+            void overlay.offsetWidth;
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }
+        function openEditModalById(appId) {
+            const app = apps.find(a => a.id === appId);
+            if (!app) return;
+            openEditModal(app);
+        }
+
+        function openEditModal(app) {
+            document.getElementById('app-edit-mode').value = "true";
+            document.getElementById('app-modal-title').textContent = "Edit Application";
+            
+            const idField = document.getElementById('app-id');
+            idField.value = app.id;
+            idField.readOnly = true;
+            idField.classList.add('opacity-50');
+            
+            document.getElementById('app-name').value = app.name;
+            document.getElementById('app-type').value = app.app_type || '';
+            document.getElementById('app-cmd').value = app.cmd;
+            document.getElementById('app-cwd').value = app.cwd;
+            document.getElementById('app-port').value = app.port || '';
+            document.getElementById('app-local-url').value = app.local_url || '';
+            document.getElementById('app-remote-url').value = app.remote_url || '';
+            document.getElementById('app-group').value = app.group || '';
+            document.getElementById('app-description').value = app.description || '';
+            document.getElementById('app-icon').value = app.icon_path || '';
+            document.getElementById('app-start-group').checked = app.start_with_group !== false;
+            document.getElementById('app-launch-external').checked = app.launch_external === true;
+            
+            const overlay = document.getElementById('app-modal-overlay');
+            const content = document.getElementById('app-modal-content');
+            overlay.classList.remove('hidden');
+            void overlay.offsetWidth;
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }
+        
+        function closeAppModal(e) {
+            const overlay = document.getElementById('app-modal-overlay');
+            const content = document.getElementById('app-modal-content');
+            if (e && e.target !== overlay && e.target.tagName !== 'BUTTON' && !e.target.closest('button')) return;
+            
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+        }
+        
+        async function saveApp(e) {
+            e.preventDefault();
+            const btn = document.getElementById('app-save-btn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving`;
+            lucide.createIcons();
+            
+            const isEdit = document.getElementById('app-edit-mode').value === "true";
+            const appId = document.getElementById('app-id').value;
+            const groupVal = document.getElementById('app-group').value.trim();
+            
+            const payload = {
+                id: appId,
+                name: document.getElementById('app-name').value,
+                app_type: document.getElementById('app-type').value || null,
+                cmd: document.getElementById('app-cmd').value,
+                cwd: document.getElementById('app-cwd').value,
+                port: document.getElementById('app-port').value ? parseInt(document.getElementById('app-port').value) : null,
+                local_url: document.getElementById('app-local-url').value || null,
+                remote_url: document.getElementById('app-remote-url').value || null,
+                group: groupVal ? groupVal : null,
+                start_with_group: document.getElementById('app-start-group').checked,
+                launch_external: document.getElementById('app-launch-external').checked,
+                description: document.getElementById('app-description').value || null,
+                icon_path: document.getElementById('app-icon').value || null,
+                env: {}
+            };
+            
+            try {
+                const method = isEdit ? 'PUT' : 'POST';
+                const url = isEdit ? `/api/apps/${appId}` : `/api/apps`;
+                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert(`Error: ${err.detail}`);
+                } else {
+                    closeAppModal();
+                    await fetchApps();
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to save app');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                lucide.createIcons();
+            }
+        }
+        
+        async function deleteApp(appId) {
+            if (!confirm(`Are you sure you want to delete '${appId}'? This will stop the app if it's running.`)) return;
+            try {
+                const res = await fetch(`/api/apps/${appId}`, { method: 'DELETE' });
+                if (!res.ok) { const err = await res.json(); alert(`Error: ${err.detail}`); }
+                
+                // Cleanup multi WS if pinned
+                if (pinnedConsoles.has(appId)) togglePin(appId, false, '');
+                
+                await fetchApps();
+            } catch (err) {
+                console.error(err);
+                alert('Failed to delete app');
+            }
+        }
+
+        async function startApp(appId) {
+            try {
+                const btn = document.getElementById(`btn-start-${appId}`);
+                if (btn) { btn.disabled = true; btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`; lucide.createIcons(); }
+                const res = await fetch(`/api/apps/${appId}/start`, { method: 'POST' });
+                if (!res.ok) { const data = await res.json(); alert(`Failed to start app: ${data.detail || 'Unknown error'}`); }
+                await fetchApps();
+            } catch (err) { console.error(err); }
+        }
+
+        async function stopApp(appId) {
+            try {
+                const btn = document.getElementById(`btn-stop-${appId}`);
+                if (btn) { btn.disabled = true; btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`; lucide.createIcons(); }
+                await fetch(`/api/apps/${appId}/stop`, { method: 'POST' });
+                await fetchApps();
+            } catch (err) { console.error(err); }
+        }
+
+        async function startGroup(gName) {
+            const groupApps = apps.filter(a => (a.group || 'Ungrouped') === gName && !a.running && a.start_with_group !== false);
+            for (let app of groupApps) {
+                startApp(app.id); // intentionally non-blocking to start them concurrently
+            }
+        }
+
+        async function stopGroup(gName) {
+            const groupApps = apps.filter(a => (a.group || 'Ungrouped') === gName && a.running);
+            for (let app of groupApps) {
+                stopApp(app.id);
+            }
+        }
+
+        async function fetchApps() {
+            try {
+                const res = await fetch('/api/apps');
+                apps = await res.json();
+                renderView();
+            } catch (err) {
+                console.error('Failed to fetch apps', err);
+            }
+        }
+
+        async function fetchMetrics() {
+            try {
+                const res = await fetch('/api/system-metrics');
+                const data = await res.json();
+                
+                // CPU Updates
+                document.getElementById('metric-cpu-val').textContent = `${data.cpu.toFixed(1)}%`;
+                document.getElementById('metric-cpu-bar').style.width = `${data.cpu}%`;
+                if (data.cpu > 80) document.getElementById('metric-cpu-bar').className = "h-full transition-all duration-500 bg-red-500";
+                else if (data.cpu > 50) document.getElementById('metric-cpu-bar').className = "h-full transition-all duration-500 bg-yellow-500";
+                else document.getElementById('metric-cpu-bar').className = "h-full transition-all duration-500 bg-blue-500";
+                
+                // RAM Updates
+                document.getElementById('metric-ram-val').textContent = `${data.ram.toFixed(1)}%`;
+                document.getElementById('metric-ram-bar').style.width = `${data.ram}%`;
+                if (data.ram > 80) document.getElementById('metric-ram-bar').className = "h-full transition-all duration-500 bg-red-500";
+                else if (data.ram > 50) document.getElementById('metric-ram-bar').className = "h-full transition-all duration-500 bg-yellow-500";
+                else document.getElementById('metric-ram-bar').className = "h-full transition-all duration-500 bg-brand-500";
+                
+                // GPU Updates
+                if (data.gpu_present) {
+                    document.getElementById('metric-gpu-container').classList.remove('hidden');
+                    document.getElementById('metric-gpu-val').textContent = `${data.gpu_usage.toFixed(1)}%`;
+                    document.getElementById('metric-vram-val').textContent = `${data.vram_usage_mb.toFixed(0)}/${data.vram_total_mb.toFixed(0)} MB`;
+                    document.getElementById('metric-gpu-bar').style.width = `${data.vram_usage_percent}%`;
+                    
+                    if (data.vram_usage_percent > 85) document.getElementById('metric-gpu-bar').className = "h-full transition-all duration-500 bg-red-500";
+                    else if (data.vram_usage_percent > 60) document.getElementById('metric-gpu-bar').className = "h-full transition-all duration-500 bg-yellow-500";
+                    else document.getElementById('metric-gpu-bar').className = "h-full transition-all duration-500 bg-purple-500";
+                }
+            } catch (err) {
+                console.error('Failed to fetch metrics', err);
+            }
+        }
+
+        // Init
+        switchView(currentView); // Initial render
+        fetchApps();
+        fetchMetrics();
+        
+        // Polling
+        setInterval(fetchApps, 3000);
+        setInterval(fetchMetrics, 2000);
+    </script>
+</body>
+</html>
