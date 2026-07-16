@@ -77,7 +77,15 @@ async def poll_process_metrics():
                 compute = pynvml.nvmlDeviceGetComputeRunningProcesses(handle)
                 graphics = pynvml.nvmlDeviceGetGraphicsRunningProcesses(handle)
                 for p in compute + graphics:
-                    gpu_procs[p.pid] = p.usedGpuMemory / (1024 * 1024)
+                    gpu_procs[p.pid] = {"vram_mb": p.usedGpuMemory / (1024 * 1024), "gpu_util": 0.0}
+                    
+                samples = pynvml.nvmlDeviceGetProcessUtilization(handle, 0)
+                if samples:
+                    for s in samples:
+                        if s.pid in gpu_procs:
+                            gpu_procs[s.pid]["gpu_util"] = float(s.smUtil)
+                        else:
+                            gpu_procs[s.pid] = {"vram_mb": 0.0, "gpu_util": float(s.smUtil)}
             except Exception:
                 pass
 
@@ -91,6 +99,7 @@ async def poll_process_metrics():
                     total_cpu = 0.0
                     total_ram_mb = 0.0
                     total_vram_mb = 0.0
+                    total_gpu_util = 0.0
                     
                     for p in procs:
                         try:
@@ -99,14 +108,16 @@ async def poll_process_metrics():
                             total_cpu += p.cpu_percent(interval=None)
                             total_ram_mb += p.memory_info().rss / (1024 * 1024)
                             if p.pid in gpu_procs:
-                                total_vram_mb += gpu_procs[p.pid]
+                                total_vram_mb += gpu_procs[p.pid]["vram_mb"]
+                                total_gpu_util += gpu_procs[p.pid]["gpu_util"]
                         except (psutil.NoSuchProcess, psutil.AccessDenied):
                             pass
                             
                     process_metrics[app_id] = {
                         "cpu": round(total_cpu, 1),
                         "ram_mb": round(total_ram_mb, 1),
-                        "vram_mb": round(total_vram_mb, 1) if HAS_GPU else 0
+                        "vram_mb": round(total_vram_mb, 1) if HAS_GPU else 0,
+                        "gpu_util": round(total_gpu_util, 1) if HAS_GPU else 0
                     }
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
@@ -157,6 +168,10 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 @app.get("/")
 async def root():
     return RedirectResponse(url="/static/index.html")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("static/favicon.ico")
 
 
 async def tail_log_file(app_id: str):

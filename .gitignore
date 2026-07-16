@@ -5,6 +5,7 @@ __pycache__/
 concept.txt
 /TestFiles/
 /logs/
+/static/icons/
 
 # C extensions
 *.so
