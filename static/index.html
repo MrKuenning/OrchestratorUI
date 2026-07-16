@@ -83,7 +83,7 @@
 
         /* Nav Tab active states */
         .tab-btn.active {
-            border-bottom-color: #22c55e;
+            border-color: #22c55e;
             color: #22c55e;
         }
     </style>
@@ -96,7 +96,8 @@
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-2">
                     <i data-lucide="layers" class="w-6 h-6 text-brand-500"></i>
-                    <span class="font-bold text-xl tracking-tight text-white">OrchestratorUI</span>
+                    <span class="font-bold text-xl tracking-tight text-white hidden sm:block">OrchestratorUI</span>
+                    <span class="text-[10px] font-mono text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded ml-1 hidden sm:block">v1.0.5</span>
                 </div>
                 
                 <!-- Metrics -->
@@ -147,41 +148,44 @@
     <main class="flex-1 overflow-y-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col min-h-0 min-w-0">
         
         <!-- Header & Toolbar -->
-        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end shrink-0">
-            <div>
-                <h2 class="text-2xl font-semibold text-white">Applications</h2>
-                <p class="text-gray-400 text-sm mt-1">Manage and monitor your local background services</p>
-            </div>
+        <div class="mb-6 flex justify-end shrink-0 relative">
             
-            <div class="flex items-center gap-4">
-                <!-- View Switcher Tabs -->
-                <div class="flex border-b border-gray-800 overflow-x-auto">
-                    <button onclick="switchView('grid')" id="tab-grid" class="tab-btn active px-4 py-2 border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap">
-                        <i data-lucide="layout-grid" class="w-4 h-4"></i> Grid
-                    </button>
-                    <button onclick="switchView('list')" id="tab-list" class="tab-btn px-4 py-2 border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap">
-                        <i data-lucide="list" class="w-4 h-4"></i> List
-                    </button>
-                    <button onclick="switchView('compact')" id="tab-compact" class="tab-btn px-4 py-2 border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap">
-                        <i data-lucide="layout-panel-top" class="w-4 h-4"></i> Compact
-                    </button>
-                    <button onclick="switchView('consoles')" id="tab-consoles" class="tab-btn px-4 py-2 border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap">
-                        <i data-lucide="monitor-play" class="w-4 h-4"></i> Consoles
-                    </button>
-                </div>
-                
-                <div id="group-controls" class="flex items-center gap-2 mr-2">
-                    <label class="text-xs text-gray-400 font-medium hidden sm:block">Group by:</label>
-                    <select id="group-select" onchange="changeGroupMode(this.value)" class="bg-black/50 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500">
-                        <option value="groups">App Group</option>
-                        <option value="status">Status</option>
-                        <option value="type">App Type</option>
-                    </select>
-                </div>
-
-                <button onclick="openAppModal()" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors shadow-lg shadow-brand-500/20 shrink-0">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Add App
+            <div class="flex justify-end sm:items-center gap-4">
+                <button onclick="toggleMobileMenu()" class="sm:hidden text-gray-400 hover:text-white transition-colors p-2 bg-gray-900 rounded border border-gray-800 flex items-center justify-center">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
                 </button>
+
+                <div id="mobile-menu" class="hidden absolute top-full right-0 mt-2 p-4 bg-gray-900 border border-gray-800 rounded-xl shadow-xl z-50 flex-col gap-4 min-w-[200px] sm:static sm:mt-0 sm:p-0 sm:bg-transparent sm:border-none sm:shadow-none sm:flex sm:flex-row sm:items-center sm:z-auto">
+                    <!-- View Switcher Tabs -->
+                    <div class="flex flex-col sm:flex-row sm:border-b sm:border-gray-800 overflow-x-auto gap-2 sm:gap-0">
+                        <button onclick="switchView('grid')" id="tab-grid" class="tab-btn active px-4 py-2 border-l-2 sm:border-l-0 sm:border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap justify-start sm:justify-center">
+                            <i data-lucide="layout-grid" class="w-4 h-4"></i> Grid
+                        </button>
+                        <button onclick="switchView('list')" id="tab-list" class="tab-btn px-4 py-2 border-l-2 sm:border-l-0 sm:border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap justify-start sm:justify-center">
+                            <i data-lucide="list" class="w-4 h-4"></i> List
+                        </button>
+                        <button onclick="switchView('compact')" id="tab-compact" class="tab-btn px-4 py-2 border-l-2 sm:border-l-0 sm:border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap justify-start sm:justify-center">
+                            <i data-lucide="layout-panel-top" class="w-4 h-4"></i> Compact
+                        </button>
+                        <button onclick="switchView('consoles')" id="tab-consoles" class="tab-btn px-4 py-2 border-l-2 sm:border-l-0 sm:border-b-2 border-transparent text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap justify-start sm:justify-center">
+                            <i data-lucide="monitor-play" class="w-4 h-4"></i> Consoles
+                        </button>
+                    </div>
+                    
+                    <div id="group-controls" class="flex flex-col sm:flex-row sm:items-center gap-2 sm:mr-2">
+                        <label class="text-xs text-gray-400 font-medium sm:hidden">Group by:</label>
+                        <label class="text-xs text-gray-400 font-medium hidden sm:block">Group by:</label>
+                        <select id="group-select" onchange="changeGroupMode(this.value)" class="bg-black/50 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500 w-full sm:w-auto">
+                            <option value="groups">App Group</option>
+                            <option value="status">Status</option>
+                            <option value="type">App Type</option>
+                        </select>
+                    </div>
+
+                    <button onclick="openAppModal()" class="flex items-center justify-center sm:justify-start gap-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg py-2 px-4 text-sm font-medium transition-colors shadow-lg shadow-brand-500/20 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Add App
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -228,9 +232,19 @@
             
             <!-- COMPACT VIEW -->
             <div id="view-compact" class="hidden w-full pb-8">
-                <div class="mb-6">
-                    <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="activity" class="w-5 h-5 text-brand-500"></i> Active Processes</h3>
-                    <p class="text-sm text-gray-400">Minimal dashboard showing only what is currently running.</p>
+                <div class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="layout-panel-top" class="w-5 h-5 text-brand-500"></i> Dashboard</h3>
+                        <p class="text-sm text-gray-400 hidden sm:block">Minimal dashboard view.</p>
+                    </div>
+                    <label class="flex items-center cursor-pointer group">
+                        <div class="relative">
+                            <input type="checkbox" id="compact-hide-inactive" class="sr-only peer" onchange="renderCompact()" checked>
+                            <div class="block bg-gray-800 w-10 h-6 rounded-full border border-gray-700 peer-checked:bg-brand-600 transition-colors"></div>
+                            <div class="absolute left-1 top-1 bg-gray-400 w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4 peer-checked:bg-white"></div>
+                        </div>
+                        <div class="ml-3 text-sm font-medium text-gray-400 group-hover:text-gray-300 transition-colors">Hide Inactive</div>
+                    </label>
                 </div>
                 <div id="compact-content" class="flex flex-wrap gap-4">
                     <!-- Compact cards injected here -->
@@ -443,6 +457,12 @@
         const autoScrollToggle = document.getElementById('auto-scroll-toggle');
         const drawerOverlay = document.getElementById('drawer-overlay');
         const consoleDrawer = document.getElementById('console-drawer');
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+            menu.classList.toggle('flex');
+        }
 
         function changeGroupMode(mode) {
             groupMode = mode;
@@ -825,42 +845,72 @@
 
         function renderCompact() {
             const container = document.getElementById('compact-content');
+            const hideInactive = document.getElementById('compact-hide-inactive').checked;
             
-            const runningApps = apps.filter(a => a.running);
+            let displayApps = apps;
+            if (hideInactive) {
+                displayApps = apps.filter(a => a.running);
+            }
             
-            if (runningApps.length === 0) {
-                container.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center text-gray-500 py-16 bg-gray-900/20 rounded-xl border border-gray-800/50 border-dashed">
-                    <i data-lucide="power-off" class="w-12 h-12 mb-3 text-gray-600"></i>
-                    <p>No applications are currently running.</p>
+            if (displayApps.length === 0) {
+                container.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center text-gray-500 py-16 bg-gray-900/20 rounded-xl border border-gray-800/50 border-dashed w-full min-w-[280px]">
+                    <i data-lucide="${hideInactive ? 'power-off' : 'box'}" class="w-12 h-12 mb-3 text-gray-600"></i>
+                    <p>${hideInactive ? 'No applications are currently running.' : 'No applications configured.'}</p>
                 </div>`;
                 lucide.createIcons();
                 return;
             }
 
             let html = '';
-            runningApps.forEach(app => {
+            
+            const renderAppCard = (app) => {
+                const isRunning = app.running;
                 const portBadge = app.port ? `<span class="text-xs text-gray-400 font-mono">:${app.port}</span>` : '';
                 const urlButtons = `
                     ${app.local_url ? `<a href="${app.local_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors" title="Open Local URL"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></a>` : ''}
                     ${app.remote_url ? `<a href="${app.remote_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded transition-colors" title="Open Remote URL"><i data-lucide="globe" class="w-3.5 h-3.5"></i></a>` : ''}
                 `;
-                html += `
-                    <div class="w-full sm:w-[320px] shrink-0 glass-panel rounded-lg p-3 flex items-center justify-between border-l-2 border-l-brand-500 bg-gray-800/20">
+                
+                const borderColor = isRunning ? 'border-l-brand-500' : 'border-l-gray-600';
+                const actionButton = isRunning 
+                    ? `<button onclick="stopApp('${app.id}')" class="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i></button>`
+                    : `<button onclick="startApp('${app.id}')" class="p-1.5 text-brand-500 hover:bg-brand-500/20 rounded transition-colors" title="Start"><i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i></button>`;
+
+                const metricsHtml = (isRunning && app.metrics) ? `<span class="ml-2 pl-2 border-l border-gray-700 text-[10px] font-mono"><i data-lucide="cpu" class="w-3 h-3 inline"></i> ${app.metrics.cpu}% &nbsp; <i data-lucide="database" class="w-3 h-3 inline"></i> ${Math.round(app.metrics.ram_mb)}MB</span>` : '';
+
+                return `
+                    <div class="w-full sm:w-[320px] shrink-0 glass-panel rounded-lg p-3 flex items-center justify-between border-l-2 ${borderColor} bg-gray-800/20">
                         <div class="flex items-center gap-3 overflow-hidden">
-                            ${app.icon_path ? `<img src="/api/apps/${app.id}/icon" class="w-6 h-6 rounded object-cover shrink-0" onerror="this.style.display='none'" />` : `<div class="w-6 h-6 rounded bg-gray-700 flex items-center justify-center shrink-0"><i data-lucide="box" class="w-3 h-3 text-gray-400"></i></div>`}
+                            ${app.icon_path ? `<img src="/api/apps/${app.id}/icon" class="w-6 h-6 rounded object-cover shrink-0 ${!isRunning ? 'grayscale opacity-60' : ''}" onerror="this.style.display='none'" />` : `<div class="w-6 h-6 rounded bg-gray-700 flex items-center justify-center shrink-0 ${!isRunning ? 'opacity-60' : ''}"><i data-lucide="box" class="w-3 h-3 text-gray-400"></i></div>`}
                             <div class="flex flex-col truncate">
-                                <span class="text-sm font-medium text-white truncate" title="${app.name}">${app.name}</span>
-                                <span class="text-xs text-gray-500">PID: ${app.pid} ${portBadge} ${(app.metrics) ? `<span class="ml-2 pl-2 border-l border-gray-700 text-[10px] font-mono"><i data-lucide="cpu" class="w-3 h-3 inline"></i> ${app.metrics.cpu}% &nbsp; <i data-lucide="database" class="w-3 h-3 inline"></i> ${Math.round(app.metrics.ram_mb)}MB</span>` : ''}</span>
+                                <span class="text-sm font-medium ${isRunning ? 'text-white' : 'text-gray-400'} truncate" title="${app.name}">${app.name}</span>
+                                <span class="text-xs text-gray-500">${isRunning ? `PID: ${app.pid}` : 'Stopped'} ${portBadge} ${metricsHtml}</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-1 shrink-0 ml-2">
                             ${urlButtons}
                             <button onclick="openConsole('${app.id}', '${app.name}')" class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors" title="Logs"><i data-lucide="terminal-square" class="w-3.5 h-3.5"></i></button>
-                            <button onclick="stopApp('${app.id}')" class="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i></button>
+                            ${actionButton}
                         </div>
                     </div>
                 `;
-            });
+            };
+
+            const activeApps = displayApps.filter(a => a.running);
+            const inactiveApps = displayApps.filter(a => !a.running);
+
+            if (!hideInactive && (activeApps.length > 0 || inactiveApps.length > 0)) {
+                if (activeApps.length > 0) {
+                    html += `<div class="w-full mt-2 mb-1"><h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4 text-brand-500"></i> Active Processes</h4></div>`;
+                    activeApps.forEach(app => html += renderAppCard(app));
+                }
+                if (inactiveApps.length > 0) {
+                    html += `<div class="w-full mt-4 mb-1"><h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2"><i data-lucide="moon" class="w-4 h-4"></i> Inactive Processes</h4></div>`;
+                    inactiveApps.forEach(app => html += renderAppCard(app));
+                }
+            } else {
+                displayApps.forEach(app => html += renderAppCard(app));
+            }
             
             container.innerHTML = html;
             lucide.createIcons();

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.5]
 
 ### Added
 - Comprehensive `README.md` with project overview, features, setup instructions, and configuration details.
@@ -16,7 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Overhauled UX designs for all views:
   - **Grid View**: Implemented robust fixed-width sizing and optimized single-line CMD previews to prevent layout shifting.
   - **List View**: Added responsive table design, prioritizing Name and Actions on mobile devices.
-  - **Compact View**: Re-engineered to a flex wrap layout with fixed-width minimalist tiles.
+  - **Compact View**: 
+    - Re-engineered to a flex wrap layout with fixed-width minimalist tiles.
+    - Added a "Hide Inactive" toggle switch to view either only active processes or all configured apps.
+    - When inactive apps are shown, they are automatically grouped into "Active Processes" and "Inactive Processes" sections with distinct styling.
+  - **Header & Mobile Experience**:
+    - The title text gracefully hides on narrow screens, preserving space.
+    - Added a touch-friendly hamburger dropdown menu that cleanly collapses the View Tabs, Group By dropdown, and Add App button on mobile devices.
+    - Removed redundant title headings for a cleaner, unified toolbar layout.
+    - Added a `v1.0.5` version badge to the navbar.
 
 ### Fixed
 - Fixed an annoying UI bug where inline expanded consoles would violently snap to the top of the log when the dashboard's asynchronous refresh cycle triggered. Log scroll positions are now perfectly persisted.
