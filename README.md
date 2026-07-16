@@ -26,15 +26,17 @@ OrchestratorUI is a web-based process manager and orchestrator designed to run, 
    ```
 
 2. **Run the startup script:**
-   Simply double-click on `start.bat` or run it from the command line:
-   ```bash
-   start.bat
-   ```
+   You can run the orchestrator manually or completely in the background:
+   - **Standard Mode**: Double-click `start.bat` (this leaves a CMD window open).
+   - **Hidden Mode (Recommended)**: Double-click `Start Hidden.vbs`. This executes the orchestrator entirely in the background with no persistent window.
+
    This script will automatically install required dependencies (`fastapi`, `uvicorn`, `websockets`, `psutil`, `pynvml`) and launch the FastAPI server.
 
 3. **Access the Dashboard:**
    Open your web browser and navigate to:
    [http://localhost:8000/static/index.html](http://localhost:8000/static/index.html)
+   
+   *Note: OrchestratorUI tracks its own resource usage natively! You will see an "Orchestrator UI" app at the top of your dashboard where you can monitor its live CPU/RAM footprint and stream its backend logs.*
 
 ## Configuration (`config.json`)
 

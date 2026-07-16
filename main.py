@@ -3,6 +3,7 @@ import json
 import os
 import platform
 import subprocess
+import sys
 from collections import deque
 from contextlib import asynccontextmanager
 
@@ -32,6 +33,31 @@ STATE_FILE = "state.json"
 LOGS_DIR = "logs"
 os.makedirs(LOGS_DIR, exist_ok=True)
 
+class LoggerWriter:
+    def __init__(self, log_file, orig_stream):
+        self.log_file = log_file
+        self.orig_stream = orig_stream
+
+    def write(self, message):
+        self.orig_stream.write(message)
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(message)
+        except Exception:
+            pass
+
+    def flush(self):
+        self.orig_stream.flush()
+
+sys.stdout = LoggerWriter(os.path.join(LOGS_DIR, "orchestrator-ui-self.log"), sys.stdout)
+sys.stderr = LoggerWriter(os.path.join(LOGS_DIR, "orchestrator-ui-self.log"), sys.stderr)
+
+import logging
+file_handler = logging.FileHandler(os.path.join(LOGS_DIR, "orchestrator-ui-self.log"), encoding="utf-8")
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+for logger_name in ("uvicorn.error", "uvicorn.access"):
+    logging.getLogger(logger_name).addHandler(file_handler)
+
 def load_state():
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE, "r") as f:
@@ -43,10 +69,27 @@ def save_state(state_data):
         json.dump(state_data, f, indent=2)
 
 def load_config():
+    apps = []
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as f:
-            return json.load(f)
-    return []
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                apps = json.load(f)
+        except Exception:
+            pass
+            
+    if not any(a["id"] == "orchestrator-ui-self" for a in apps):
+        apps.insert(0, {
+            "id": "orchestrator-ui-self",
+            "name": "Orchestrator UI",
+            "cmd": "uvicorn main:app --host 0.0.0.0 --port 8000",
+            "cwd": ".",
+            "app_type": "Server",
+            "group": "System",
+            "icon_path": "",
+            "local_url": "http://localhost:8000"
+        })
+        save_config(apps)
+    return apps
 
 def save_config(config_data):
     with open(CONFIG_FILE, "w") as f:
@@ -77,7 +120,8 @@ async def poll_process_metrics():
                 compute = pynvml.nvmlDeviceGetComputeRunningProcesses(handle)
                 graphics = pynvml.nvmlDeviceGetGraphicsRunningProcesses(handle)
                 for p in compute + graphics:
-                    gpu_procs[p.pid] = {"vram_mb": p.usedGpuMemory / (1024 * 1024), "gpu_util": 0.0}
+                    vram = (p.usedGpuMemory / (1024 * 1024)) if p.usedGpuMemory is not None else 0.0
+                    gpu_procs[p.pid] = {"vram_mb": vram, "gpu_util": 0.0}
                     
                 samples = pynvml.nvmlDeviceGetProcessUtilization(handle, 0)
                 if samples:
@@ -129,7 +173,19 @@ async def lifespan(app: FastAPI):
     # Startup logic: Check state.json, populate active_processes if PIDs are alive
     saved_state = load_state()
     active_pids = {}
+    
+    # Inject self app
+    active_processes["orchestrator-ui-self"] = {
+        "pid": os.getpid(),
+        "logs": deque(maxlen=500),
+        "clients": set(),
+        "log_task": asyncio.create_task(tail_log_file("orchestrator-ui-self"))
+    }
+    active_pids["orchestrator-ui-self"] = os.getpid()
+    
     for app_id, pid in saved_state.items():
+        if app_id == "orchestrator-ui-self":
+            continue
         try:
             # Check if PID is alive
             proc = psutil.Process(pid)

@@ -204,18 +204,18 @@
                                 <th class="p-4 cursor-pointer hover:text-white transition-colors group" onclick="toggleSort('name')">
                                     Name <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1 opacity-50 group-hover:opacity-100"></i>
                                 </th>
-                                <th class="p-4 cursor-pointer hover:text-white transition-colors group" onclick="toggleSort('group')">
+                                <th class="p-4 cursor-pointer hover:text-white transition-colors group hidden md:table-cell" onclick="toggleSort('group')">
                                     Group <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1 opacity-50 group-hover:opacity-100"></i>
                                 </th>
-                                <th class="p-4 cursor-pointer hover:text-white transition-colors group" onclick="toggleSort('running')">
+                                <th class="p-4 cursor-pointer hover:text-white transition-colors group hidden md:table-cell" onclick="toggleSort('running')">
                                     Status <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1 opacity-50 group-hover:opacity-100"></i>
                                 </th>
-                                <th class="p-4 cursor-pointer hover:text-white transition-colors group" onclick="toggleSort('type')">
+                                <th class="p-4 cursor-pointer hover:text-white transition-colors group hidden md:table-cell" onclick="toggleSort('type')">
                                     Type <i data-lucide="arrow-up-down" class="w-3 h-3 inline ml-1 opacity-50 group-hover:opacity-100"></i>
                                 </th>
-                                <th class="p-4">Port</th>
-                                <th class="p-4">PID</th>
-                                <th class="p-4">Metrics</th>
+                                <th class="p-4 hidden md:table-cell">Port</th>
+                                <th class="p-4 hidden md:table-cell">PID</th>
+                                <th class="p-4 hidden md:table-cell">Metrics</th>
                                 <th class="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -232,7 +232,7 @@
                     <h3 class="text-lg font-medium text-white flex items-center gap-2"><i data-lucide="activity" class="w-5 h-5 text-brand-500"></i> Active Processes</h3>
                     <p class="text-sm text-gray-400">Minimal dashboard showing only what is currently running.</p>
                 </div>
-                <div id="compact-content" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div id="compact-content" class="flex flex-wrap gap-4">
                     <!-- Compact cards injected here -->
                 </div>
             </div>
@@ -493,10 +493,39 @@
 
         // ----- Core Render Loop ----- //
         function renderView() {
+            // Save inline consoles to prevent them from closing during refresh
+            const savedConsoles = {};
+            for (const id in inlineWs) {
+                const el = document.getElementById(`inline-console-${id}`);
+                if (el) {
+                    savedConsoles[id] = {
+                        node: el,
+                        scroll: el.scrollTop
+                    };
+                }
+            }
+
             if (currentView === 'grid') renderGrid();
             else if (currentView === 'list') renderList();
             else if (currentView === 'compact') renderCompact();
             else renderConsolesView();
+
+            // Restore inline consoles if they still exist in the new DOM
+            for (const id in savedConsoles) {
+                const newEl = document.getElementById(`inline-console-${id}`);
+                const chevron = document.getElementById(`inline-chevron-${id}`);
+                if (newEl) {
+                    newEl.replaceWith(savedConsoles[id].node);
+                    savedConsoles[id].node.scrollTop = savedConsoles[id].scroll;
+                    if (chevron) chevron.classList.add('rotate-180');
+                } else {
+                    // Node is gone (e.g. switched view), close the WS
+                    if (inlineWs[id]) {
+                        inlineWs[id].close();
+                        delete inlineWs[id];
+                    }
+                }
+            }
         }
 
         // ----- Grid View ----- //
@@ -564,7 +593,7 @@
                             ${groupMode === 'groups' && runningCount > 0 ? `<button onclick="stopGroup('${gName}')" class="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-colors"><i data-lucide="square" class="w-3 h-3 fill-current"></i> Stop Group</button>` : ''}
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                    <div class="flex flex-wrap gap-4">
                 `;
 
                 // Render Cards
@@ -606,12 +635,12 @@
                         <div class="flex items-center gap-3 mt-3 text-[11px] font-mono text-gray-400 bg-black/40 py-1.5 px-2.5 rounded border border-gray-800/50">
                             <span title="CPU Usage" class="flex items-center gap-1.5"><i data-lucide="cpu" class="w-3.5 h-3.5 text-gray-500"></i> ${app.metrics.cpu}%</span>
                             <span title="RAM Usage" class="flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-gray-500"></i> ${Math.round(app.metrics.ram_mb)} MB</span>
-                            ${(app.metrics.vram_mb || app.metrics.gpu_util) ? `<span title="GPU/VRAM Usage" class="flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5 text-gray-500"></i> ${app.metrics.gpu_util}% / ${Math.round(app.metrics.vram_mb)} MB</span>` : ''}
+                            ${(app.metrics.gpu_util !== undefined) ? `<span title="GPU Usage" class="flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5 text-gray-500"></i> ${app.metrics.gpu_util}%</span>` : ''}
                         </div>
                     ` : '';
 
                     html += `
-                        <div class="glass-panel rounded-xl overflow-hidden flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+                        <div class="w-full sm:w-[380px] shrink-0 glass-panel rounded-xl overflow-hidden flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                             <div class="p-4 flex-1 relative">
                                 ${isRunning ? `<div class="absolute -top-10 -right-10 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>` : ''}
                                 
@@ -644,11 +673,9 @@
                                     </div>
                                 </div>
                                 
-                                <div class="bg-black/30 rounded-lg p-2.5 border border-gray-800/50 relative z-10">
-                                    <div class="flex justify-between items-center text-xs text-gray-500 font-mono mb-1">
-                                        <span>CMD</span>
-                                    </div>
-                                    <div class="text-sm text-gray-300 font-mono truncate" title="${app.cmd}">${app.cmd}</div>
+                                <div class="bg-black/30 rounded-lg py-1.5 px-2.5 border border-gray-800/50 relative z-10 flex items-center gap-2">
+                                    <span class="text-[11px] text-gray-500 font-mono font-medium shrink-0">CMD:</span>
+                                    <div class="text-[11px] text-gray-400 font-mono truncate" title="${app.cmd}">${app.cmd}</div>
                                 </div>
                             </div>
                             
@@ -761,20 +788,20 @@
                                     <span class="truncate" title="${app.name}">${app.name}</span>
                                 </div>
                             </td>
-                            <td class="p-4 text-gray-400">
+                            <td class="p-4 text-gray-400 hidden md:table-cell">
                                 ${app.group ? `<span class="px-2 py-1 rounded bg-gray-800 text-xs">${app.group}</span>` : '<span class="text-xs text-gray-600">Ungrouped</span>'}
                             </td>
-                            <td class="p-4">
+                            <td class="p-4 hidden md:table-cell">
                                 <div class="flex items-center gap-2">
                                     ${statusDot}
                                     <span class="${isRunning ? 'text-brand-500' : 'text-gray-500'}">${isRunning ? 'Running' : 'Stopped'}</span>
                                 </div>
                             </td>
-                            <td class="p-4">${typeBadge}</td>
-                        <td class="p-4 text-gray-400 font-mono text-xs">${app.port || '-'}</td>
-                        <td class="p-4 text-gray-400 font-mono text-xs">${app.pid || '-'}</td>
-                        <td class="p-4 text-gray-400 font-mono text-xs whitespace-nowrap">
-                            ${(isRunning && app.metrics) ? `<span title="CPU"><i data-lucide="cpu" class="w-3 h-3 inline"></i> ${app.metrics.cpu}%</span> <span title="RAM" class="ml-2"><i data-lucide="database" class="w-3 h-3 inline"></i> ${Math.round(app.metrics.ram_mb)}MB</span> ${(app.metrics.vram_mb || app.metrics.gpu_util) ? `<span title="GPU" class="ml-2"><i data-lucide="monitor" class="w-3 h-3 inline"></i> ${app.metrics.gpu_util}% / ${Math.round(app.metrics.vram_mb)}MB</span>` : ''}` : '-'}
+                            <td class="p-4 hidden md:table-cell">${typeBadge}</td>
+                        <td class="p-4 text-gray-400 font-mono text-xs hidden md:table-cell">${app.port || '-'}</td>
+                        <td class="p-4 text-gray-400 font-mono text-xs hidden md:table-cell">${app.pid || '-'}</td>
+                        <td class="p-4 text-gray-400 font-mono text-xs whitespace-nowrap hidden md:table-cell">
+                            ${(isRunning && app.metrics) ? `<span title="CPU"><i data-lucide="cpu" class="w-3 h-3 inline"></i> ${app.metrics.cpu}%</span> <span title="RAM" class="ml-2"><i data-lucide="database" class="w-3 h-3 inline"></i> ${Math.round(app.metrics.ram_mb)}MB</span> ${(app.metrics.gpu_util !== undefined) ? `<span title="GPU" class="ml-2"><i data-lucide="monitor" class="w-3 h-3 inline"></i> ${app.metrics.gpu_util}%</span>` : ''}` : '-'}
                         </td>
                         <td class="p-4 text-right">
                             <div class="flex items-center justify-end gap-2">
@@ -818,7 +845,7 @@
                     ${app.remote_url ? `<a href="${app.remote_url}" target="_blank" class="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded transition-colors" title="Open Remote URL"><i data-lucide="globe" class="w-3.5 h-3.5"></i></a>` : ''}
                 `;
                 html += `
-                    <div class="glass-panel rounded-lg p-3 flex items-center justify-between border-l-2 border-l-brand-500 bg-gray-800/20">
+                    <div class="w-full sm:w-[320px] shrink-0 glass-panel rounded-lg p-3 flex items-center justify-between border-l-2 border-l-brand-500 bg-gray-800/20">
                         <div class="flex items-center gap-3 overflow-hidden">
                             ${app.icon_path ? `<img src="/api/apps/${app.id}/icon" class="w-6 h-6 rounded object-cover shrink-0" onerror="this.style.display='none'" />` : `<div class="w-6 h-6 rounded bg-gray-700 flex items-center justify-center shrink-0"><i data-lucide="box" class="w-3 h-3 text-gray-400"></i></div>`}
                             <div class="flex flex-col truncate">
