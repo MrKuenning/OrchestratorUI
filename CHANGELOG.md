@@ -1,11 +1,12 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [1.0.7] - 2026-07-17
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### Fixed
+- Fixed a bug where Orchestrator UI would double-count RAM usage by including the memory footprint of all its child applications in its own metric.
+- Fixed an issue where stopping Orchestrator UI would forcefully kill all background applications it had launched (by removing the Tree Kill flag from its stop routine).
 
-## [1.0.6]
+## [1.0.6] - 2026-07-16
 
 ### Added
 - Enhanced Grid View layout logic to use dynamic flex-wrap instead of rigid rows. This significantly improves screen utilization by allowing multiple narrow groups to seamlessly float next to each other on a single line.
@@ -17,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Resolved a DOM structure bug introduced in a recent update that mistakenly nested the Compact and Consoles views inside the List view container, rendering those tabs invisible.
 
-## [1.0.5]
+## [1.0.5] - 2026-07-16
 ### Added
 - Comprehensive `README.md` with project overview, features, setup instructions, and configuration details.
 - Favicon support (`favicon.ico`) for the web application.
@@ -40,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed an annoying UI bug where inline expanded consoles would violently snap to the top of the log when the dashboard's asynchronous refresh cycle triggered. Log scroll positions are now perfectly persisted.
 
-## [0.1.0] - Initial Release
+## [0.1.0] - 2026-07-16 - Initial Release
 
 ### Added
 - Initial web-based process manager and orchestrator.

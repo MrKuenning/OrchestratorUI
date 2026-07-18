@@ -138,7 +138,10 @@ async def poll_process_metrics():
             if pid:
                 try:
                     parent = psutil.Process(pid)
-                    procs = [parent] + parent.children(recursive=True)
+                    if app_id == "orchestrator-ui-self":
+                        procs = [parent]
+                    else:
+                        procs = [parent] + parent.children(recursive=True)
                     
                     total_cpu = 0.0
                     total_ram_mb = 0.0
@@ -408,8 +411,12 @@ async def stop_app(app_id: str):
             p = psutil.Process(pid)
             if p.is_running():
                 if platform.system() == "Windows":
-                    # Taskkill ensures all child processes spawned by .bat are terminated
-                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
+                    if app_id == "orchestrator-ui-self":
+                        # Do not tree kill self to avoid killing managed background apps
+                        subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+                    else:
+                        # Taskkill ensures all child processes spawned by .bat are terminated
+                        subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
                 else:
                     p.kill()
         except (psutil.NoSuchProcess, psutil.AccessDenied):
