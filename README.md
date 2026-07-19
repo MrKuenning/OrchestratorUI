@@ -12,28 +12,36 @@ OrchestratorUI is a web-based process manager and orchestrator designed to run, 
 - **Custom Configuration**: Easily define apps with custom commands, working directories, environment variables, grouping, and more in `config.json`.
 - **State Persistence**: Remembers running applications and reconnects to active processes if the orchestrator restarts.
 
-List View
-<img width="1518" height="806" alt="2026-07-19 10_30_11-Command Palette" src="https://github.com/user-attachments/assets/44705f45-895c-40a5-8cf3-f92da617bd54" />
+## List View
 Quickly start and top your scripts and UIs.
 See them grouped by app or by status.
 See the resouces consumed per app.
 
-Console View
-<img width="1518" height="806" alt="2026-07-19 10_31_49-OpenVPN Connect" src="https://github.com/user-attachments/assets/be0ddc1d-dc58-4a69-b394-e16037e87de7" />
+<img width="1518" height="806" alt="2026-07-19 10_30_11-Command Palette" src="https://github.com/user-attachments/assets/44705f45-895c-40a5-8cf3-f92da617bd54" />
+
+
+## Console View
 There are several ways to view the console outputs, one of them is the console screen where you can pin apps and view their output.
 
-Compact View
-<img width="546" height="660" alt="2026-07-19 10_43_06-OpenVPN Connect" src="https://github.com/user-attachments/assets/1ab0ad33-a242-463a-a78e-d4b929573e95" />
+<img width="1518" height="806" alt="2026-07-19 10_31_49-OpenVPN Connect" src="https://github.com/user-attachments/assets/be0ddc1d-dc58-4a69-b394-e16037e87de7" />
+
+
+## Compact View
 Clean compact view has mobile responsive design.
 
-Image of the Grid Card
-<img width="413" height="316" alt="2026-07-19 10_33_57-PowerToys Quick Access (Preview)" src="https://github.com/user-attachments/assets/7280fc79-434d-476c-8fad-4d983e7bf1d4" />
+<img width="546" height="660" alt="2026-07-19 10_43_06-OpenVPN Connect" src="https://github.com/user-attachments/assets/1ab0ad33-a242-463a-a78e-d4b929573e95" />
+
+
+## Grid Card
 Grid view gives puts everything at your fingertips.
 
-Image of the Config Screen
-<img width="791" height="881" alt="2026-07-19 10_35_08-OpenVPN Connect" src="https://github.com/user-attachments/assets/8c31f5cc-efb0-4c84-9346-2eb95a436222" />
+<img width="413" height="316" alt="2026-07-19 10_33_57-PowerToys Quick Access (Preview)" src="https://github.com/user-attachments/assets/7280fc79-434d-476c-8fad-4d983e7bf1d4" />
+
+
+## Config Screen
 Easy to configure apps via GUI or JSON
 
+<img width="791" height="881" alt="2026-07-19 10_35_08-OpenVPN Connect" src="https://github.com/user-attachments/assets/8c31f5cc-efb0-4c84-9346-2eb95a436222" />
 
 
 
