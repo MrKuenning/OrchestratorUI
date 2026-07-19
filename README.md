@@ -2,6 +2,12 @@
 
 OrchestratorUI is a web-based process manager and orchestrator designed to run, monitor, and control various applications and scripts from a single unified dashboard.
 
+If you run a lot of local scripts, background workers, or web UIs, your desktop quickly becomes a messy sea of open terminal windows. Every tool has its own complex startup flags, tracking down log files is a pain, and managing them remotely is nearly impossible without full RDP access.
+
+OrchestratorUI fixes this. It acts as a lightweight, centralized parent process that manages your entire stack. Instead of juggling dozens of command prompts, you can launch OrchestratorUI in the background and control all your other apps from a single, clean web dashboard.
+
+Whether you need to bounce a frozen script, check live hardware resources, or tail logs from your phone while away from your desk, everything is consolidated into one place.
+
 ## Features
 
 - **Centralized Dashboard**: View and manage all your configured applications in one place.
