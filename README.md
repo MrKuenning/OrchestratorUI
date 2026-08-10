@@ -2,6 +2,12 @@
 
 OrchestratorUI is a web-based process manager and orchestrator designed to run, monitor, and control various applications and scripts from a single unified dashboard.
 
+If you run a lot of local scripts, background workers, or web UIs, your desktop quickly becomes a messy sea of open terminal windows. Every tool has its own complex startup flags, tracking down log files is a pain, and managing them remotely is nearly impossible without full RDP access.
+
+OrchestratorUI fixes this. It acts as a lightweight, centralized parent process that manages your entire stack. Instead of juggling dozens of command prompts, you can launch OrchestratorUI in the background and control all your other apps from a single, clean web dashboard.
+
+Whether you need to bounce a frozen script, check live hardware resources, or tail logs from your phone while away from your desk, everything is consolidated into one place.
+
 ## Features
 
 - **Centralized Dashboard**: View and manage all your configured applications in one place.
@@ -11,6 +17,39 @@ OrchestratorUI is a web-based process manager and orchestrator designed to run, 
 - **Flexible Execution**: Launch apps in the background or in an external console window.
 - **Custom Configuration**: Easily define apps with custom commands, working directories, environment variables, grouping, and more in `config.json`.
 - **State Persistence**: Remembers running applications and reconnects to active processes if the orchestrator restarts.
+
+## List View
+Quickly start and top your scripts and UIs.
+See them grouped by app or by status.
+See the resouces consumed per app.
+
+<img width="1518" height="806" alt="2026-07-19 10_30_11-Command Palette" src="https://github.com/user-attachments/assets/44705f45-895c-40a5-8cf3-f92da617bd54" />
+
+
+## Console View
+There are several ways to view the console outputs, one of them is the console screen where you can pin apps and view their output.
+
+<img width="1518" height="806" alt="2026-07-19 10_31_49-OpenVPN Connect" src="https://github.com/user-attachments/assets/be0ddc1d-dc58-4a69-b394-e16037e87de7" />
+
+
+## Compact View
+Clean compact view has mobile responsive design.
+
+<img width="546" height="660" alt="2026-07-19 10_43_06-OpenVPN Connect" src="https://github.com/user-attachments/assets/1ab0ad33-a242-463a-a78e-d4b929573e95" />
+
+
+## Grid Card
+Grid view gives puts everything at your fingertips.
+
+<img width="413" height="316" alt="2026-07-19 10_33_57-PowerToys Quick Access (Preview)" src="https://github.com/user-attachments/assets/7280fc79-434d-476c-8fad-4d983e7bf1d4" />
+
+
+## Config Screen
+Easy to configure apps via GUI or JSON
+
+<img width="791" height="881" alt="2026-07-19 10_35_08-OpenVPN Connect" src="https://github.com/user-attachments/assets/8c31f5cc-efb0-4c84-9346-2eb95a436222" />
+
+
 
 ## Prerequisites
 
