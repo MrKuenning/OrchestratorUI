@@ -6,6 +6,7 @@ concept.txt
 /TestFiles/
 /logs/
 /static/icons/
+nv.bat 
 
 #config
 config.json
