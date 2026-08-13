@@ -11,11 +11,14 @@ Whether you need to bounce a frozen script, check live hardware resources, or ta
 ## Features
 
 - **Centralized Dashboard**: View and manage all your configured applications in one place.
-- **Process Management**: Start and stop applications asynchronously.
-- **Real-time Log Tailing**: View live console outputs via WebSockets directly in the browser.
+- **Process Management**: Start and stop applications asynchronously with styled confirmation modals.
+- **Real-time Log Tailing & Interaction**: Stream live console outputs via WebSockets and send commands directly to process `stdin`.
+- **Dynamic Prompt Detection**: Automatically scans terminal streams for interactive prompts (`[y/n]`, `[yes/no]`, `press any key...`) and renders 1-click quick action buttons.
+- **Collapsible Console Sidebar & Slim Tiles**: Pin multiple consoles side-by-side with dynamic scaling (down to `300px`) and collapse the pin panel to a docked edge tab.
+- **One-Click App Cloning**: Instantly duplicate app configurations with auto-incrementing IDs (`app-2`), names, and port allocation.
 - **Resource Monitoring**: Live monitoring of CPU, RAM, and GPU (VRAM) usage per application using `psutil` and `pynvml`.
 - **Flexible Execution**: Launch apps in the background or in an external console window.
-- **Custom Configuration**: Easily define apps with custom commands, working directories, environment variables, grouping, and more in `config.json`.
+- **Custom Configuration & Auto-Backup**: Define apps with custom commands, environment variables, and groups in `config.json`, with automated backups saved to `config.bkp` on startup.
 - **State Persistence**: Remembers running applications and reconnects to active processes if the orchestrator restarts.
 
 ## List View
@@ -27,7 +30,7 @@ See the resouces consumed per app.
 
 
 ## Console View
-There are several ways to view the console outputs, one of them is the console screen where you can pin apps and view their output.
+Pin multiple consoles side-by-side with dynamic scaling down to `300px`. Send real-time `stdin` commands directly to processes, utilize 1-click dynamic prompt buttons (`y/n`, `yes/no`, `any key`), and collapse the pin sidebar to a zero-height edge tab for full-screen workspace.
 
 <img width="1518" height="806" alt="2026-07-19 10_31_49-OpenVPN Connect" src="https://github.com/user-attachments/assets/be0ddc1d-dc58-4a69-b394-e16037e87de7" />
 
