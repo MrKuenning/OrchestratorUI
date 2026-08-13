@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from collections import deque
@@ -29,6 +30,7 @@ active_processes = {}
 process_metrics = {}
 
 CONFIG_FILE = "config.json"
+BACKUP_CONFIG_FILE = "config.bkp"
 STATE_FILE = "state.json"
 LOGS_DIR = "logs"
 os.makedirs(LOGS_DIR, exist_ok=True)
@@ -173,7 +175,14 @@ async def poll_process_metrics():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic: Check state.json, populate active_processes if PIDs are alive
+    # Startup logic: Backup config.json if it exists
+    if os.path.exists(CONFIG_FILE):
+        try:
+            shutil.copyfile(CONFIG_FILE, BACKUP_CONFIG_FILE)
+        except Exception as e:
+            print(f"Failed to backup config: {e}")
+
+    # Check state.json, populate active_processes if PIDs are alive
     saved_state = load_state()
     active_pids = {}
     

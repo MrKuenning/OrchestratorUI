@@ -9,6 +9,9 @@
 - **Dynamic Prompt Detection**: Automated regex detection on incoming log streams to recognize prompts (`[y/n]`, `[yes/no]`, `press any key...`) and render instant one-click action buttons.
 - **Collapsible Console Sidebar**: Added a sidebar toggle button and a zero-height docked left-edge expand tab for the Consoles view (persisted in `localStorage`).
 - **Dynamic Slim Console Scaling**: Reduced minimum console tile width from `600px` down to `300px`, enabling multiple pinned consoles to dynamically scale side-by-side without forcing wide horizontal scrollbars.
+- **Clone Application Feature**: Added a "Clone App" action button to Grid View (and List View) that creates a duplicate configuration with automatically incremented trailing ID digits, unique app names, and safely incremented ports.
+- **Centered Confirmation Modals**: Added styled, centered confirmation modals for stopping and deleting applications, prominently displaying the app's name before proceeding.
+- **Automatic Config Backup**: Added automatic copying of `config.json` to `config.bkp` during backend startup (`lifespan` initialization).
 - **UI Restart Guard**: Visually disables input fields with `"Disconnected (UI restarted)"` if a running process was launched prior to a backend server restart.
 
 ## [1.0.8] - 2026-08-10
