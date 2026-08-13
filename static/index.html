@@ -450,6 +450,27 @@
         </div>
     </div>
 
+    <!-- Confirm Delete Modal Overlay -->
+    <div id="confirm-delete-modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity opacity-0 duration-300 flex items-center justify-center p-4" onclick="closeConfirmDeleteModal(event)">
+        <!-- Modal Content -->
+        <div class="glass-panel w-full max-w-md rounded-2xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 opacity-0 border border-gray-800 p-6 flex flex-col items-center text-center" id="confirm-delete-modal-content" onclick="event.stopPropagation()">
+            <div class="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4 text-red-500 shrink-0">
+                <i data-lucide="trash-2" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">Delete Application?</h3>
+            <p class="text-sm text-gray-300 mb-6 leading-relaxed">
+                Are you sure you want to delete <span id="confirm-delete-app-name" class="font-bold text-white underline decoration-red-500/50">App Name</span>?<br>
+                <span class="text-xs text-gray-400 mt-1 block">This will stop the app if it is currently running.</span>
+            </p>
+            <div class="flex items-center gap-3 w-full">
+                <button onclick="closeConfirmDeleteModal()" class="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium text-gray-400 hover:text-white bg-gray-800/60 hover:bg-gray-800 border border-gray-700/50 transition-all">Cancel</button>
+                <button id="confirm-delete-btn" onclick="executeConfirmDelete()" class="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Delete App
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Single Console Drawer Overlay -->
     <div id="drawer-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden transition-opacity opacity-0 duration-300" onclick="closeConsole()"></div>
 
@@ -777,14 +798,17 @@
                                     <div class="flex flex-col items-end gap-2 shrink-0">
                                         ${typeBadge}
                                         ${portBadge}
-                                        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                                            <button onclick="openEditModalById('${app.id}')" class="p-1.5 text-gray-400 hover:text-brand-400 hover:bg-gray-800 rounded transition-colors" title="Edit App">
-                                                <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
-                                            </button>
-                                            <button onclick="deleteApp('${app.id}')" class="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded transition-colors" title="Delete App">
-                                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                                            </button>
-                                        </div>
+                                         <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                                             <button onclick="cloneApp('${app.id}')" class="p-1.5 text-gray-400 hover:text-brand-400 hover:bg-gray-800 rounded transition-colors" title="Clone App">
+                                                 <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                             </button>
+                                             <button onclick="openEditModalById('${app.id}')" class="p-1.5 text-gray-400 hover:text-brand-400 hover:bg-gray-800 rounded transition-colors" title="Edit App">
+                                                 <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                                             </button>
+                                             <button onclick="confirmDeleteApp('${app.id}')" class="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded transition-colors" title="Delete App">
+                                                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                             </button>
+                                         </div>
                                     </div>
                                 </div>
                                 
@@ -925,8 +949,9 @@
                                     ? `<button onclick="confirmStopApp('${app.id}')" class="p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-4 h-4 fill-current"></i></button>`
                                     : `<button onclick="startApp('${app.id}')" class="p-1.5 bg-brand-500/10 text-brand-500 hover:bg-brand-500/20 rounded transition-colors" title="Start"><i data-lucide="play" class="w-4 h-4 fill-current"></i></button>`}
                                 <button onclick="openConsole('${app.id}', '${app.name}')" class="p-1.5 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded transition-colors" title="Logs"><i data-lucide="terminal-square" class="w-4 h-4"></i></button>
+                                <button onclick="cloneApp('${app.id}')" class="p-1.5 text-gray-500 hover:text-brand-400 transition-colors" title="Clone App"><i data-lucide="copy" class="w-4 h-4"></i></button>
                                 <button onclick="openEditModalById('${app.id}')" class="p-1.5 text-gray-500 hover:text-brand-400 transition-colors" title="Edit App"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                                <button onclick="deleteApp('${app.id}')" class="p-1.5 text-gray-500 hover:text-red-400 transition-colors" title="Delete App"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                <button onclick="confirmDeleteApp('${app.id}')" class="p-1.5 text-gray-500 hover:text-red-400 transition-colors" title="Delete App"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         </td>
                         </tr>
@@ -1486,6 +1511,58 @@
             }
         }
         
+        let pendingDeleteAppId = null;
+
+        function confirmDeleteApp(appId) {
+            const app = apps.find(a => a.id === appId);
+            const appName = app ? app.name : appId;
+            pendingDeleteAppId = appId;
+
+            document.getElementById('confirm-delete-app-name').textContent = appName;
+
+            const overlay = document.getElementById('confirm-delete-modal-overlay');
+            const content = document.getElementById('confirm-delete-modal-content');
+            overlay.classList.remove('hidden');
+            void overlay.offsetWidth;
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+            lucide.createIcons();
+        }
+
+        function closeConfirmDeleteModal(e) {
+            const overlay = document.getElementById('confirm-delete-modal-overlay');
+            const content = document.getElementById('confirm-delete-modal-content');
+            if (e && e.target !== overlay && e.target.tagName !== 'BUTTON' && !e.target.closest('button')) return;
+            
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+        }
+
+        async function executeConfirmDelete() {
+            if (!pendingDeleteAppId) return;
+            const targetId = pendingDeleteAppId;
+            closeConfirmDeleteModal();
+            
+            try {
+                const res = await fetch(`/api/apps/${targetId}`, { method: 'DELETE' });
+                if (!res.ok) { const err = await res.json(); alert(`Error: ${err.detail}`); }
+                
+                // Cleanup multi WS if pinned
+                if (pinnedConsoles.has(targetId)) togglePin(targetId, false, '');
+                
+                await fetchApps();
+            } catch (err) {
+                console.error(err);
+                alert('Failed to delete app');
+            }
+        }
+
         async function deleteApp(appId) {
             if (!confirm(`Are you sure you want to delete '${appId}'? This will stop the app if it's running.`)) return;
             try {
@@ -1499,6 +1576,73 @@
             } catch (err) {
                 console.error(err);
                 alert('Failed to delete app');
+            }
+        }
+
+        async function cloneApp(appId) {
+            const app = apps.find(a => a.id === appId);
+            if (!app) return;
+
+            // Generate unique App ID with trailing digit increment
+            let baseId = app.id;
+            let match = baseId.match(/^(.*?)(-?\d+)$/);
+            let prefixId, num;
+            if (match) {
+                prefixId = match[1];
+                num = parseInt(match[2], 10) + 1;
+            } else {
+                prefixId = baseId + "-";
+                num = 2;
+            }
+
+            let newId = `${prefixId}${num}`;
+            while (apps.some(a => a.id === newId)) {
+                num++;
+                newId = `${prefixId}${num}`;
+            }
+
+            // Name increment
+            let baseName = app.name;
+            let nameMatch = baseName.match(/^(.*?)\s*(\d+)$/);
+            let newName;
+            if (nameMatch) {
+                newName = `${nameMatch[1]} ${parseInt(nameMatch[2], 10) + 1}`;
+            } else {
+                newName = `${baseName} 2`;
+            }
+
+            const payload = {
+                id: newId,
+                name: newName,
+                app_type: app.app_type || null,
+                cmd: app.cmd,
+                cwd: app.cwd,
+                port: app.port ? app.port + 1 : null,
+                local_url: app.local_url || null,
+                remote_url: app.remote_url || null,
+                group: app.group || null,
+                start_with_group: app.start_with_group !== false,
+                launch_external: app.launch_external === true,
+                description: app.description || null,
+                icon_path: app.icon_path || null,
+                env: app.env || {}
+            };
+
+            try {
+                const res = await fetch('/api/apps', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert(`Failed to clone app: ${err.detail}`);
+                } else {
+                    await fetchApps();
+                }
+            } catch (err) {
+                console.error('Failed to clone app', err);
+                alert('Failed to clone application');
             }
         }
 
