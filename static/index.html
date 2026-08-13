@@ -499,6 +499,15 @@
             </div>
         </div>
         
+        <div id="drawer-restart-banner" class="hidden bg-brand-500/10 border-b border-brand-500/30 px-4 py-2 text-xs text-gray-300 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-brand-400"></i>
+                <span>App restarted. Showing previous session.</span>
+            </div>
+            <button onclick="reconnectDrawerConsole()" class="px-3 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded-md text-xs font-medium transition-colors shadow flex items-center gap-1">
+                <i data-lucide="play-circle" class="w-3.5 h-3.5"></i> View Active Session
+            </button>
+        </div>
         <div id="terminal-output" class="terminal-scroll flex-1 p-4 overflow-y-auto font-mono text-sm text-gray-300 whitespace-pre-wrap break-words"></div>
         
         <div id="drawer-prompt-bar" class="hidden px-4 py-2 border-t border-gray-800/80 bg-gray-900/60 shrink-0 flex items-center gap-3">
@@ -537,6 +546,13 @@
         let multiWs = {}; // { appId: WebSocket }
         
         let inlineWs = {}; // { appId: WebSocket }
+
+        // Session Tracking for Restarts
+        let tileConnectedPid = {};
+        let tileWsClosed = {};
+        let drawerAppId = null;
+        let drawerConnectedPid = null;
+        let drawerWsClosed = false;
 
         // Consoles Sidebar State
         let isConsolesSidebarCollapsed = localStorage.getItem('orchestrator_consoles_sidebar_collapsed') === 'true';
@@ -1095,6 +1111,15 @@
                             <button onclick="togglePin('${appId}', false, '${appName}')" class="text-gray-400 hover:text-red-400 transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
                         </div>
                     </div>
+                    <div id="tile-restart-banner-${appId}" class="hidden bg-brand-500/10 border-b border-brand-500/30 px-3 py-2 text-xs text-gray-300 flex items-center justify-between shrink-0">
+                        <div class="flex items-center gap-2 truncate pr-2">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-brand-400 shrink-0"></i>
+                            <span class="truncate">App restarted. Showing previous session.</span>
+                        </div>
+                        <button onclick="reconnectTileConsole('${appId}')" class="px-2.5 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded text-xs font-medium transition-colors shadow shrink-0 flex items-center gap-1">
+                            <i data-lucide="play-circle" class="w-3 h-3"></i> View Active Session
+                        </button>
+                    </div>
                     <div id="tile-output-${appId}" class="terminal-scroll flex-1 p-3 overflow-y-auto font-mono text-xs text-gray-300 whitespace-pre-wrap break-words bg-[#0d1117]"></div>
                     <div id="tile-prompt-bar-${appId}" class="hidden px-3 py-1.5 border-t border-gray-800/80 bg-gray-900/60 shrink-0 flex items-center gap-2">
                         <span class="text-[11px] text-gray-400 font-medium flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3 text-brand-500"></i> Prompt:</span>
@@ -1144,12 +1169,48 @@
             }
         }
 
+        function reconnectTileConsole(appId) {
+            const out = document.getElementById(`tile-output-${appId}`);
+            if (out) {
+                const divider = document.createElement('div');
+                divider.className = "text-brand-500 my-2 font-semibold border-y border-brand-500/20 py-1 text-center bg-brand-500/5 text-xs";
+                divider.textContent = "--- Reconnected to Active Session ---";
+                out.appendChild(divider);
+            }
+            
+            const app = apps.find(a => a.id === appId);
+            const inputField = document.getElementById(`tile-input-${appId}`);
+            const sendBtn = document.getElementById(`tile-btn-${appId}`);
+            if (inputField && sendBtn && app && app.running && app.input_connected) {
+                inputField.disabled = false;
+                inputField.placeholder = "Type command here...";
+                inputField.classList.remove("opacity-50", "cursor-not-allowed");
+                sendBtn.disabled = false;
+                sendBtn.classList.remove("opacity-50", "cursor-not-allowed");
+            }
+            
+            const banner = document.getElementById(`tile-restart-banner-${appId}`);
+            if (banner) banner.classList.add('hidden');
+
+            if (multiWs[appId]) {
+                try { multiWs[appId].close(); } catch(e) {}
+            }
+            connectMultiWs(appId);
+        }
+
         function connectMultiWs(appId) {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws/logs/${appId}`;
             
             const ws = new WebSocket(wsUrl);
             multiWs[appId] = ws;
+
+            const app = apps.find(a => a.id === appId);
+            if (app) tileConnectedPid[appId] = app.pid;
+            tileWsClosed[appId] = false;
+
+            const banner = document.getElementById(`tile-restart-banner-${appId}`);
+            if (banner) banner.classList.add('hidden');
             
             const output = document.getElementById(`tile-output-${appId}`);
             
@@ -1159,21 +1220,19 @@
                     for(let i=0; i<100; i++) output.removeChild(output.firstChild);
                 }
                 const span = document.createElement('span');
-                // Use AnsiUp to parse colors!
                 span.innerHTML = ansiParser.ansi_to_html(event.data);
                 output.appendChild(span);
                 
-                // auto scroll multi always for now
                 output.scrollTop = output.scrollHeight;
 
-                // Check for dynamic prompt buttons
                 updatePromptButtons(`tile-prompt-buttons-${appId}`, `tile-prompt-bar-${appId}`, event.data, 'sendMultiQuickInput', appId);
             };
             ws.onclose = () => {
+                tileWsClosed[appId] = true;
                 if (output) {
                     const span = document.createElement('span');
-                    span.className = "text-yellow-500 block mt-2";
-                    span.innerHTML = `[Disconnected]`;
+                    span.className = "text-yellow-500 block mt-2 font-semibold";
+                    span.innerHTML = `[Session Ended]`;
                     output.appendChild(span);
                 }
             }
@@ -1264,11 +1323,24 @@
             }
         }
 
+        function reconnectDrawerConsole() {
+            if (!drawerAppId) return;
+            const app = apps.find(a => a.id === drawerAppId);
+            openConsole(drawerAppId, app ? app.name : drawerAppId);
+        }
+
         function openConsole(appId, appName) {
+            drawerAppId = appId;
+            const app = apps.find(a => a.id === appId);
+            drawerConnectedPid = app ? app.pid : null;
+            drawerWsClosed = false;
+
+            const banner = document.getElementById('drawer-restart-banner');
+            if (banner) banner.classList.add('hidden');
+
             document.getElementById('console-title').textContent = appName;
             document.getElementById('console-subtitle').textContent = `Connecting to ${appId}...`;
             
-            const app = apps.find(a => a.id === appId);
             const inputField = document.getElementById('drawer-input');
             const sendBtn = document.getElementById('drawer-send-btn');
             
@@ -1311,12 +1383,10 @@
                     for(let i=0; i<500; i++) terminalOutput.removeChild(terminalOutput.firstChild);
                 }
                 const span = document.createElement('span');
-                // Use AnsiUp to parse colors!
                 span.innerHTML = ansiParser.ansi_to_html(event.data);
                 terminalOutput.appendChild(span);
                 scrollToBottom();
 
-                // Check for dynamic prompt buttons
                 updatePromptButtons('drawer-prompt-buttons', 'drawer-prompt-bar', event.data, 'sendDrawerQuickInput');
             };
             
@@ -1328,11 +1398,12 @@
             };
             
             activeWs.onclose = () => {
+                drawerWsClosed = true;
                 document.getElementById('console-subtitle').textContent = `Disconnected`;
                 document.getElementById('console-subtitle').className = "text-xs text-red-500 font-mono";
                 const span = document.createElement('span');
-                span.className = 'text-yellow-500 block mt-2';
-                span.textContent = '[Connection Closed]';
+                span.className = 'text-yellow-500 block mt-2 font-semibold';
+                span.textContent = '[Session Ended]';
                 terminalOutput.appendChild(span);
             };
         }
@@ -1741,6 +1812,23 @@
                 if(document.getElementById('apps-total-cpu')) document.getElementById('apps-total-cpu').textContent = totalCpu.toFixed(1) + '%';
                 if(document.getElementById('apps-total-ram')) document.getElementById('apps-total-ram').textContent = Math.round(totalRam) + ' MB';
                 if(document.getElementById('apps-total-gpu')) document.getElementById('apps-total-gpu').textContent = totalGpu.toFixed(1) + '% / ' + Math.round(totalVram) + ' MB';
+
+                // Non-intrusive session restart banner check
+                if (drawerAppId && consoleDrawer.classList.contains('open')) {
+                    const dApp = apps.find(a => a.id === drawerAppId);
+                    const banner = document.getElementById('drawer-restart-banner');
+                    if (dApp && dApp.running && (drawerWsClosed || (drawerConnectedPid && drawerConnectedPid !== dApp.pid))) {
+                        if (banner) { banner.classList.remove('hidden'); lucide.createIcons(); }
+                    }
+                }
+
+                pinnedConsoles.forEach(id => {
+                    const pApp = apps.find(a => a.id === id);
+                    const banner = document.getElementById(`tile-restart-banner-${id}`);
+                    if (pApp && pApp.running && (tileWsClosed[id] || (tileConnectedPid[id] && tileConnectedPid[id] !== pApp.pid))) {
+                        if (banner) { banner.classList.remove('hidden'); lucide.createIcons(); }
+                    }
+                });
 
                 renderView();
             } catch (err) {

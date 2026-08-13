@@ -11,6 +11,7 @@
 - **Dynamic Slim Console Scaling**: Reduced minimum console tile width from `600px` down to `300px`, enabling multiple pinned consoles to dynamically scale side-by-side without forcing wide horizontal scrollbars.
 - **Clone Application Feature**: Added a "Clone App" action button to Grid View (and List View) that creates a duplicate configuration with automatically incremented trailing ID digits, unique app names, and safely incremented ports.
 - **Centered Confirmation Modals**: Added styled, centered confirmation modals for stopping and deleting applications, prominently displaying the app's name before proceeding.
+- **Non-Intrusive App Restart Session Banner**: Added non-interrupting notification banner (`App restarted. Showing previous session.`) with a `[ View Active Session ]` button when a monitored app is restarted while its console is open.
 - **Automatic Config Backup**: Added automatic copying of `config.json` to `config.bkp` during backend startup (`lifespan` initialization).
 - **UI Restart Guard**: Visually disables input fields with `"Disconnected (UI restarted)"` if a running process was launched prior to a backend server restart.
 
