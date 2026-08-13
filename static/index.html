@@ -99,7 +99,7 @@
                 <div class="flex items-center gap-2 shrink-0">
                     <i data-lucide="layers" class="w-6 h-6 text-brand-500"></i>
                     <span class="font-bold text-xl tracking-tight text-white hidden sm:block">OrchestratorUI</span>
-                    <span class="text-[10px] font-mono text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded ml-1 hidden sm:block">v1.0.8</span>
+                    <span class="text-[10px] font-mono text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded ml-1 hidden sm:block">v1.0.9</span>
                 </div>
                 
                 <!-- 2. Controls (Drops down on narrower screens) -->
@@ -278,16 +278,26 @@
             </div>
             
             <!-- MULTI-CONSOLE VIEW -->
-            <div id="view-consoles" class="hidden flex-1 flex gap-4 h-full min-h-0 min-w-0">
+            <div id="view-consoles" class="hidden flex-1 flex gap-4 h-full min-h-0 min-w-0 relative">
                 <!-- Sidebar Pins -->
-                <div class="w-64 glass-panel rounded-xl border border-gray-800 p-4 flex flex-col h-full overflow-hidden shrink-0">
-                    <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
-                        <i data-lucide="pin" class="w-4 h-4"></i> Pin Consoles
-                    </h3>
+                <div id="console-sidebar-panel" class="w-64 glass-panel rounded-xl border border-gray-800 p-4 flex flex-col h-full overflow-hidden shrink-0 transition-all duration-300">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-white flex items-center gap-2">
+                            <i data-lucide="pin" class="w-4 h-4 text-brand-500"></i> Pin Consoles
+                        </h3>
+                        <button onclick="toggleConsolesSidebar()" class="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors" title="Collapse Sidebar">
+                            <i data-lucide="panel-left-close" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                     <div id="console-pins" class="flex-1 overflow-y-auto terminal-scroll flex flex-col gap-2">
                         <!-- Pin toggles injected here -->
                     </div>
                 </div>
+                
+                <!-- Expand Sidebar Tab (when collapsed) -->
+                <button id="console-sidebar-expand-btn" onclick="toggleConsolesSidebar()" class="hidden absolute left-0 top-1/2 -translate-y-1/2 z-30 py-3.5 px-2 glass-panel border border-l-0 border-gray-700/80 rounded-r-xl text-brand-500 hover:text-brand-400 hover:bg-gray-800/90 transition-all shadow-2xl" title="Expand Pin Sidebar">
+                    <i data-lucide="panel-left-open" class="w-5 h-5"></i>
+                </button>
                 
                 <!-- Tiled Consoles -->
                 <div id="console-tiles" class="flex gap-4 h-full overflow-x-auto min-w-0 min-h-0 pb-2 terminal-scroll flex-1">
@@ -449,6 +459,15 @@
         </div>
         
         <div id="terminal-output" class="terminal-scroll flex-1 p-4 overflow-y-auto font-mono text-sm text-gray-300 whitespace-pre-wrap break-words"></div>
+        
+        <div id="drawer-prompt-bar" class="hidden px-4 py-2 border-t border-gray-800/80 bg-gray-900/60 shrink-0 flex items-center gap-3">
+            <span class="text-xs text-gray-400 font-medium flex items-center gap-1.5"><i data-lucide="zap" class="w-3.5 h-3.5 text-brand-500"></i> Prompt Detected:</span>
+            <div id="drawer-prompt-buttons" class="flex flex-wrap items-center gap-2"></div>
+        </div>
+        <div class="p-3 border-t border-gray-800 glass-panel shrink-0 flex gap-2">
+            <input type="text" id="drawer-input" class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500" placeholder="Type command here..." onkeypress="if(event.key === 'Enter') sendDrawerInput()">
+            <button onclick="sendDrawerInput()" id="drawer-send-btn" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg">Send</button>
+        </div>
     </div>
 
     <!-- JS Logic -->
@@ -477,6 +496,31 @@
         let multiWs = {}; // { appId: WebSocket }
         
         let inlineWs = {}; // { appId: WebSocket }
+
+        // Consoles Sidebar State
+        let isConsolesSidebarCollapsed = localStorage.getItem('orchestrator_consoles_sidebar_collapsed') === 'true';
+
+        function toggleConsolesSidebar(forceState) {
+            if (forceState !== undefined) {
+                isConsolesSidebarCollapsed = forceState;
+            } else {
+                isConsolesSidebarCollapsed = !isConsolesSidebarCollapsed;
+            }
+            localStorage.setItem('orchestrator_consoles_sidebar_collapsed', isConsolesSidebarCollapsed);
+
+            const panel = document.getElementById('console-sidebar-panel');
+            const expandBtn = document.getElementById('console-sidebar-expand-btn');
+            
+            if (!panel || !expandBtn) return;
+
+            if (isConsolesSidebarCollapsed) {
+                panel.classList.add('hidden');
+                expandBtn.classList.remove('hidden');
+            } else {
+                panel.classList.remove('hidden');
+                expandBtn.classList.add('hidden');
+            }
+        }
 
         // DOM Elements
         const terminalOutput = document.getElementById('terminal-output');
@@ -655,7 +699,7 @@
                         : `<span class="text-[12px] font-semibold text-gray-500 uppercase tracking-wide shrink-0">Stopped</span>`;
 
                     const buttons = isRunning
-                        ? `<button id="btn-stop-${app.id}" onclick="stopApp('${app.id}')" class="flex-1 flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg py-1.5 px-3 text-sm font-medium transition-colors"><i data-lucide="square" class="w-4 h-4 fill-current"></i> Stop</button>`
+                        ? `<button id="btn-stop-${app.id}" onclick="confirmStopApp('${app.id}')" class="flex-1 flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg py-1.5 px-3 text-sm font-medium transition-colors"><i data-lucide="square" class="w-4 h-4 fill-current"></i> Stop</button>`
                         : `<button id="btn-start-${app.id}" onclick="startApp('${app.id}')" class="flex-1 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg py-1.5 px-3 text-sm font-medium transition-colors shadow-[0_0_15px_rgba(34,197,94,0.3)]"><i data-lucide="play" class="w-4 h-4 fill-current"></i> Start</button>`;
 
                     const portBadge = app.port 
@@ -858,7 +902,7 @@
                             <div class="flex items-center justify-end gap-2">
                                 ${urlButtons}
                                 ${isRunning 
-                                    ? `<button onclick="stopApp('${app.id}')" class="p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-4 h-4 fill-current"></i></button>`
+                                    ? `<button onclick="confirmStopApp('${app.id}')" class="p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-4 h-4 fill-current"></i></button>`
                                     : `<button onclick="startApp('${app.id}')" class="p-1.5 bg-brand-500/10 text-brand-500 hover:bg-brand-500/20 rounded transition-colors" title="Start"><i data-lucide="play" class="w-4 h-4 fill-current"></i></button>`}
                                 <button onclick="openConsole('${app.id}', '${app.name}')" class="p-1.5 bg-gray-800 text-gray-300 hover:bg-gray-700 rounded transition-colors" title="Logs"><i data-lucide="terminal-square" class="w-4 h-4"></i></button>
                                 <button onclick="openEditModalById('${app.id}')" class="p-1.5 text-gray-500 hover:text-brand-400 transition-colors" title="Edit App"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
@@ -904,7 +948,7 @@
                 
                 const borderColor = isRunning ? 'border-l-brand-500' : 'border-l-gray-600';
                 const actionButton = isRunning 
-                    ? `<button onclick="stopApp('${app.id}')" class="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i></button>`
+                    ? `<button onclick="confirmStopApp('${app.id}')" class="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-colors" title="Stop"><i data-lucide="square" class="w-3.5 h-3.5 fill-current"></i></button>`
                     : `<button onclick="startApp('${app.id}')" class="p-1.5 text-brand-500 hover:bg-brand-500/20 rounded transition-colors" title="Start"><i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i></button>`;
 
                 const metricsHtml = (isRunning && app.metrics) ? `<span class="ml-2 pl-2 border-l border-gray-700 text-[10px] font-mono"><i data-lucide="cpu" class="w-3 h-3 inline"></i> ${app.metrics.cpu}% &nbsp; <i data-lucide="database" class="w-3 h-3 inline"></i> ${Math.round(app.metrics.ram_mb)}MB</span>` : '';
@@ -949,6 +993,8 @@
 
         // ----- Multi-Console View ----- //
         function renderConsolesView() {
+            toggleConsolesSidebar(isConsolesSidebarCollapsed);
+
             const sidebar = document.getElementById('console-pins');
             let sidebarHtml = '';
             
@@ -995,7 +1041,7 @@
                 tile.id = `tile-${appId}`;
                 tile.className = "glass-panel border border-gray-800 rounded-xl overflow-hidden flex flex-col shadow-lg shrink-0 flex-grow min-h-0";
                 tile.style.flexBasis = "0";
-                tile.style.minWidth = "min(100%, 600px)";
+                tile.style.minWidth = "min(100%, 300px)";
                 tile.innerHTML = `
                     <div class="px-4 py-2 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
                         <span class="font-medium text-white text-sm flex items-center gap-2"><i data-lucide="terminal-square" class="w-4 h-4 text-brand-500"></i> ${appName}</span>
@@ -1005,9 +1051,29 @@
                         </div>
                     </div>
                     <div id="tile-output-${appId}" class="terminal-scroll flex-1 p-3 overflow-y-auto font-mono text-xs text-gray-300 whitespace-pre-wrap break-words bg-[#0d1117]"></div>
+                    <div id="tile-prompt-bar-${appId}" class="hidden px-3 py-1.5 border-t border-gray-800/80 bg-gray-900/60 shrink-0 flex items-center gap-2">
+                        <span class="text-[11px] text-gray-400 font-medium flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3 text-brand-500"></i> Prompt:</span>
+                        <div id="tile-prompt-buttons-${appId}" class="flex flex-wrap items-center gap-1.5"></div>
+                    </div>
+                    <div class="p-2 border-t border-gray-800 bg-gray-900/50 flex gap-2 shrink-0">
+                        <input type="text" id="tile-input-${appId}" class="flex-1 bg-black/50 border border-gray-700 rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500" placeholder="Type command here..." onkeypress="if(event.key === 'Enter') sendMultiInput('${appId}')">
+                        <button onclick="sendMultiInput('${appId}')" id="tile-btn-${appId}" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-md text-xs font-medium transition-colors">Send</button>
+                    </div>
                 `;
                 gridContainer.appendChild(tile);
                 lucide.createIcons();
+                
+                const app = apps.find(a => a.id === appId);
+                const inputField = document.getElementById(`tile-input-${appId}`);
+                const sendBtn = document.getElementById(`tile-btn-${appId}`);
+                
+                if (app && app.running && !app.input_connected) {
+                    inputField.disabled = true;
+                    inputField.placeholder = "Disconnected (UI restarted)";
+                    inputField.classList.add("opacity-50", "cursor-not-allowed");
+                    sendBtn.disabled = true;
+                    sendBtn.classList.add("opacity-50", "cursor-not-allowed");
+                }
                 
                 // Connect WebSocket
                 connectMultiWs(appId);
@@ -1021,6 +1087,16 @@
                 }
             }
             renderConsolesView(); // Update sidebar state and grid columns
+        }
+
+        function sendMultiInput(appId) {
+            const inputField = document.getElementById(`tile-input-${appId}`);
+            const text = inputField.value;
+            const ws = multiWs[appId];
+            if (text && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(text + '\n');
+                inputField.value = '';
+            }
         }
 
         function connectMultiWs(appId) {
@@ -1044,6 +1120,9 @@
                 
                 // auto scroll multi always for now
                 output.scrollTop = output.scrollHeight;
+
+                // Check for dynamic prompt buttons
+                updatePromptButtons(`tile-prompt-buttons-${appId}`, `tile-prompt-bar-${appId}`, event.data, 'sendMultiQuickInput', appId);
             };
             ws.onclose = () => {
                 if (output) {
@@ -1083,9 +1162,84 @@
             terminalOutput.innerHTML = '';
         }
 
+        function sendDrawerInput() {
+            const inputField = document.getElementById('drawer-input');
+            const text = inputField.value;
+            if (text && activeWs && activeWs.readyState === WebSocket.OPEN) {
+                activeWs.send(text + '\n');
+                inputField.value = '';
+            }
+        }
+
+        function updatePromptButtons(containerId, barId, text, sendCallbackName, appId) {
+            const container = document.getElementById(containerId);
+            const bar = document.getElementById(barId);
+            if (!container || !bar) return;
+
+            if (!text) return;
+            const lower = text.toLowerCase();
+            const buttons = [];
+
+            if (/\[y\/n\]|\(y\/n\)|y\/n/i.test(lower)) {
+                buttons.push({ label: 'y', val: 'y' });
+                buttons.push({ label: 'n', val: 'n' });
+            } else if (/\[yes\/no\]|\(yes\/no\)|yes\/no/i.test(lower)) {
+                buttons.push({ label: 'Yes', val: 'Yes' });
+                buttons.push({ label: 'No', val: 'No' });
+            }
+
+            if (/press any key|press enter/i.test(lower)) {
+                buttons.push({ label: 'Any Key / Enter', val: '' });
+            }
+
+            if (buttons.length === 0) return;
+
+            bar.classList.remove('hidden');
+            const targetArg = appId ? `'${appId}', ` : '';
+            container.innerHTML = buttons.map(b => 
+                `<button onclick="${sendCallbackName}(${targetArg}'${b.val}')" class="px-2 py-0.5 rounded text-xs font-semibold bg-brand-500/20 hover:bg-brand-500/30 text-brand-400 border border-brand-500/30 transition-all shadow-sm active:scale-95 flex items-center gap-1"><i data-lucide="corner-down-left" class="w-3 h-3"></i> ${b.label}</button>`
+            ).join('');
+            lucide.createIcons();
+        }
+
+        function sendDrawerQuickInput(val) {
+            if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+                activeWs.send(val + '\n');
+                const bar = document.getElementById('drawer-prompt-bar');
+                if (bar) bar.classList.add('hidden');
+            }
+        }
+
+        function sendMultiQuickInput(appId, val) {
+            const ws = multiWs[appId];
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(val + '\n');
+                const bar = document.getElementById(`tile-prompt-bar-${appId}`);
+                if (bar) bar.classList.add('hidden');
+            }
+        }
+
         function openConsole(appId, appName) {
             document.getElementById('console-title').textContent = appName;
             document.getElementById('console-subtitle').textContent = `Connecting to ${appId}...`;
+            
+            const app = apps.find(a => a.id === appId);
+            const inputField = document.getElementById('drawer-input');
+            const sendBtn = document.getElementById('drawer-send-btn');
+            
+            if (app && app.running && !app.input_connected) {
+                inputField.disabled = true;
+                inputField.placeholder = "Disconnected (UI restarted)";
+                inputField.classList.add("opacity-50", "cursor-not-allowed");
+                sendBtn.disabled = true;
+                sendBtn.classList.add("opacity-50", "cursor-not-allowed");
+            } else {
+                inputField.disabled = false;
+                inputField.placeholder = "Type command here...";
+                inputField.classList.remove("opacity-50", "cursor-not-allowed");
+                sendBtn.disabled = false;
+                sendBtn.classList.remove("opacity-50", "cursor-not-allowed");
+            }
             
             drawerOverlay.classList.remove('hidden');
             void drawerOverlay.offsetWidth;
@@ -1116,6 +1270,9 @@
                 span.innerHTML = ansiParser.ansi_to_html(event.data);
                 terminalOutput.appendChild(span);
                 scrollToBottom();
+
+                // Check for dynamic prompt buttons
+                updatePromptButtons('drawer-prompt-buttons', 'drawer-prompt-bar', event.data, 'sendDrawerQuickInput');
             };
             
             activeWs.onerror = (err) => {
@@ -1323,6 +1480,46 @@
                 console.error(err);
                 alert('Failed to delete app');
             }
+        }
+
+        let pendingStopAppId = null;
+
+        function confirmStopApp(appId) {
+            const app = apps.find(a => a.id === appId);
+            const appName = app ? app.name : appId;
+            pendingStopAppId = appId;
+
+            document.getElementById('confirm-stop-app-name').textContent = appName;
+
+            const overlay = document.getElementById('confirm-stop-modal-overlay');
+            const content = document.getElementById('confirm-stop-modal-content');
+            overlay.classList.remove('hidden');
+            void overlay.offsetWidth;
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+            lucide.createIcons();
+        }
+
+        function closeConfirmStopModal(e) {
+            const overlay = document.getElementById('confirm-stop-modal-overlay');
+            const content = document.getElementById('confirm-stop-modal-content');
+            if (e && e.target !== overlay && e.target.tagName !== 'BUTTON' && !e.target.closest('button')) return;
+            
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+        }
+
+        async function executeConfirmStop() {
+            if (!pendingStopAppId) return;
+            const targetId = pendingStopAppId;
+            closeConfirmStopModal();
+            await stopApp(targetId);
         }
 
         async function startApp(appId) {

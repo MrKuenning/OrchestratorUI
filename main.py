@@ -275,6 +275,7 @@ async def get_apps():
     for app_cfg in config:
         app_id = app_cfg["id"]
         is_running = False
+        input_connected = False
         pid = None
         
         if app_id in active_processes:
@@ -283,6 +284,7 @@ async def get_apps():
                 proc = psutil.Process(pid)
                 if proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE:
                     is_running = True
+                    input_connected = active_processes[app_id].get("proc") is not None
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 # Process died, cleanup
                 del active_processes[app_id]
@@ -291,6 +293,7 @@ async def get_apps():
         results.append({
             **app_cfg,
             "running": is_running,
+            "input_connected": input_connected if is_running else False,
             "pid": pid,
             "metrics": process_metrics.get(app_id) if is_running else None
         })
@@ -369,6 +372,7 @@ async def start_app(app_id: str):
         if not is_external:
             proc_kwargs["stdout"] = f
             proc_kwargs["stderr"] = subprocess.STDOUT
+            proc_kwargs["stdin"] = subprocess.PIPE
             
         cmd_str = app_cfg["cmd"]
         if platform.system() == "Windows" and is_external:
@@ -387,7 +391,8 @@ async def start_app(app_id: str):
             "pid": proc.pid,
             "logs": deque(maxlen=500),
             "clients": set(),
-            "log_task": asyncio.create_task(tail_log_file(app_id))
+            "log_task": asyncio.create_task(tail_log_file(app_id)),
+            "proc": proc if not is_external else None
         }
         
         # Save state
@@ -534,7 +539,14 @@ async def websocket_logs(websocket: WebSocket, app_id: str):
     try:
         # Keep connection open and wait for incoming messages (client disconnect)
         while True:
-            await websocket.receive_text()
+            data = await websocket.receive_text()
+            proc = state.get("proc")
+            if proc and proc.poll() is None and proc.stdin:
+                try:
+                    proc.stdin.write(data.encode('utf-8'))
+                    proc.stdin.flush()
+                except Exception:
+                    pass
     except WebSocketDisconnect:
         if websocket in state["clients"]:
             state["clients"].remove(websocket)

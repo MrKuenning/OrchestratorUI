@@ -11,6 +11,7 @@ nv.bat
 #config
 config.json
 state.json
+config.bkp
 
 # C extensions
 *.so

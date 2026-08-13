@@ -2,6 +2,20 @@
 
 
 
+## [1.0.9] - 2026-08-13
+
+### Added
+- **Console Standard Input Support**: Added interactive text input fields to both the single console drawer and tiled multi-console views, allowing direct `stdin` interaction via WebSockets.
+- **Dynamic Prompt Detection**: Automated regex detection on incoming log streams to recognize prompts (`[y/n]`, `[yes/no]`, `press any key...`) and render instant one-click action buttons.
+- **Collapsible Console Sidebar**: Added a sidebar toggle button and a zero-height docked left-edge expand tab for the Consoles view (persisted in `localStorage`).
+- **Dynamic Slim Console Scaling**: Reduced minimum console tile width from `600px` down to `300px`, enabling multiple pinned consoles to dynamically scale side-by-side without forcing wide horizontal scrollbars.
+- **UI Restart Guard**: Visually disables input fields with `"Disconnected (UI restarted)"` if a running process was launched prior to a backend server restart.
+
+## [1.0.8] - 2026-08-10
+
+### Added
+- Enhanced multi-console dashboard layouts with improved WebSocket reconnect handling and tile management.
+
 ## [1.0.7] - 2026-07-17
 
 ### Fixed
